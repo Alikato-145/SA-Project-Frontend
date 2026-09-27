@@ -1,21 +1,25 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const navigation = [
   { label: "ภาพรวม", href: "/dashboard", available: true },
   { label: "พนักงาน", available: false },
   { label: "เวลาและการลา", available: false },
-  { label: "เงินเดือน", available: false },
+  { label: "เงินเดือน", href: "/payroll", available: true },
   { label: "สลิปและรายงาน", available: false },
 ] as const;
 
 function NavigationItems() {
+  const pathname = usePathname();
   return (
     <ul className="grid gap-1" aria-label="เมนูหลัก">
       {navigation.map((item) => (
         <li key={item.label}>
           {item.available ? (
-            <Link href={item.href} aria-current="page" className="block rounded-lg bg-[var(--accent-soft)] px-3 py-2.5 text-sm font-semibold text-[var(--accent)]">
+            <Link href={item.href} aria-current={pathname === item.href ? "page" : undefined} className={`block rounded-lg px-3 py-2.5 text-sm font-semibold ${pathname === item.href ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--muted)]"}`}>
               {item.label}
             </Link>
           ) : (

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ApiClientError, apiRequest } from "./client";
+import { ApiClientError, apiRequest, apiRequestEnvelope } from "./client";
 
 const fetcher = (body: unknown, status = 200) =>
   (() =>
@@ -32,6 +32,12 @@ describe("apiRequest", () => {
       message: "ไม่อนุญาต",
       status: 403,
     });
+  });
+
+  test("returns request correlation from the backend envelope", async () => {
+    await expect(apiRequestEnvelope<{ id: string }>("/v1/payroll/periods/1", {
+      fetcher: fetcher({ data: { id: "1" }, request_id: "request-1" }),
+    })).resolves.toEqual({ data: { id: "1" }, requestId: "request-1" });
   });
 
   test("rejects malformed bodies", async () => {
