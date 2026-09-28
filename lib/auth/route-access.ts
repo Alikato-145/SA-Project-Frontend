@@ -7,7 +7,6 @@ export type DashboardRoutePolicy = {
 };
 
 const allRoles: readonly DashboardRole[] = ["EMPLOYEE", "SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"];
-const unreleased: DashboardRoutePolicy = { known: true, roles: [], state: "unavailable" };
 const unknown: DashboardRoutePolicy = { known: false, roles: [], state: "unavailable" };
 
 export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
@@ -19,7 +18,9 @@ export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
   if (pathname === "/accounts" || pathname.startsWith("/accounts/")) return { known: true, roles: ["OWNER", "HR"], state: "released" };
   if (pathname === "/organization") return { known: true, roles: ["OWNER", "HR"], state: "released" };
   if (pathname === "/employees" || pathname.startsWith("/employees/")) return { known: true, roles: ["OWNER", "HR"], state: "released" };
-  if (["/attendance", "/leave", "/overtime", "/finance"].includes(pathname)) return unreleased;
+  if (pathname === "/attendance") return { known: true, roles: ["OWNER", "HR", "BRANCH_MANAGER", "SUPERVISOR"], state: "released" };
+  if (pathname === "/leave" || pathname === "/overtime") return { known: true, roles: allRoles, state: "released" };
+  if (pathname === "/finance") return { known: true, roles: ["OWNER", "HR"], state: "released" };
   return unknown;
 };
 

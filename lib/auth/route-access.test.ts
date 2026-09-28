@@ -10,11 +10,9 @@ describe("dashboard route access policy", () => {
     expect(routePolicyFor("/accounts/42").roles).toEqual(["OWNER", "HR"]);
     expect(routePolicyFor("/organization").roles).toEqual(["OWNER", "HR"]);
 
-    for (const pathname of ["/attendance", "/leave", "/overtime", "/finance"]) {
-      expect(routePolicyFor(pathname).state).toBe("unavailable");
-      expect(routePolicyFor(pathname).known).toBe(true);
-      expect(routePolicyFor(pathname).roles).toEqual([]);
-    }
+    expect(routePolicyFor("/attendance").roles).toEqual(["OWNER", "HR", "BRANCH_MANAGER", "SUPERVISOR"]);
+    expect(routePolicyFor("/finance").roles).toEqual(["OWNER", "HR"]);
+    for (const pathname of ["/leave", "/overtime", "/finance"]) expect(routePolicyFor(pathname).state).toBe("released");
     expect(routePolicyFor("/unlisted")).toEqual({ known: false, roles: [], state: "unavailable" });
   });
 
@@ -28,6 +26,9 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/payslips", ["HR"])).toBe(true);
     expect(canAccessDashboardPath("/payslips", ["OWNER"])).toBe(true);
     expect(canAccessDashboardPath("/reports", ["EMPLOYEE"])).toBe(false);
+    expect(canAccessDashboardPath("/leave", ["EMPLOYEE"])).toBe(true);
+    expect(canAccessDashboardPath("/finance", ["EMPLOYEE"])).toBe(false);
+    expect(canAccessDashboardPath("/attendance", ["EMPLOYEE"])).toBe(false);
     expect(canAccessDashboardPath("/unlisted", ["OWNER"])).toBe(false);
   });
 });
