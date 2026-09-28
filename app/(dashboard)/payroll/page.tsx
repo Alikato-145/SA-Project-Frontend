@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ApiClientError } from "../../../lib/api/client";
 import { payrollApi, type PayrollConfiguration, type PayrollPeriod, type PayrollPreview, type PayrollRecord } from "../../../lib/payroll/payroll-api";
+import { authApi } from "../../../lib/auth/auth-api";
+import { organizationApi, type Branch, type Shop } from "../../../lib/organization/organization-api";
 
 const field = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm";
 const button = "rounded-lg bg-[var(--ink)] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45";
@@ -39,9 +42,14 @@ const blockerLabels: Record<string, string> = {
   PAYROLL_APPROVALS_PENDING: "ยังมีรายการรออนุมัติ", PAYROLL_ASSIGNMENT_MISSING: "ประวัติการสังกัดไม่ครบ",
   PAYROLL_NEGATIVE_NET_PAY: "เงินสุทธิติดลบ", PAYROLL_TOTAL_MISMATCH: "ยอดรวมไม่ตรงกัน",
 };
+const requiredConfigurationKeys = Object.keys(configurationOptions) as ConfigurationKey[];
 
 export default function PayrollPage() {
-  const [shopId, setShopId] = useState("1");
+  const [shopId, setShopId] = useState("");
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [roleCodes, setRoleCodes] = useState<string[]>([]);
+  const [accessChecked, setAccessChecked] = useState(false);
   const [configurations, setConfigurations] = useState<PayrollConfiguration[]>([]);
   const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
   const [selected, setSelected] = useState<PayrollPeriod | null>(null);
@@ -54,6 +62,22 @@ export default function PayrollPage() {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [canMutate, setCanMutate] = useState<boolean | null>(null);
   const [configurationKey, setConfigurationKey] = useState<ConfigurationKey>("STANDARD_WORK_DAYS");
+  const unavailableRole = !roleCodes.includes("HR") && !roleCodes.includes("OWNER") && (roleCodes.includes("EMPLOYEE") || roleCodes.includes("SUPERVISOR"));
+  const missingConfigurationKeys = useMemo(() => requiredConfigurationKeys.filter((key) => !configurations.some((row) => row.config_key === key)), [configurations]);
+
+  useEffect(() => {
+    void authApi.current().then(async (actor) => {
+      const codes = actor.grants.map((grant) => grant.role_code);
+      setRoleCodes(codes);
+      if (!codes.includes("HR") && !codes.includes("OWNER") && (codes.includes("EMPLOYEE") || codes.includes("SUPERVISOR"))) return;
+      const shopRows = await organizationApi.listActiveShops();
+      setShops(shopRows); setShopId((current) => current || shopRows[0]?.id || "");
+    }).catch((cause) => setError(messageFor(cause))).finally(() => setAccessChecked(true));
+  }, []);
+  useEffect(() => {
+    if (!shopId) return;
+    void organizationApi.listActiveBranches(shopId).then(setBranches).catch((cause) => setError(messageFor(cause)));
+  }, [shopId]);
 
   const run = async <T,>(work: () => Promise<{ data: T; requestId: string | null }>, onDone: (data: T) => void, noticeText?: string) => {
     setBusy(true); setError(""); setNotice("");
@@ -65,6 +89,7 @@ export default function PayrollPage() {
   };
 
   const loadWorkspace = async () => {
+    if (!shopId) { setError("เลือกร้านก่อนเปิดสมุดงาน"); return; }
     setLoading(true); setError(""); setNotice(""); setPreview(null); setRecord(null);
     const [accessResult, configResult, periodResult] = await Promise.allSettled([
       payrollApi.getAccess(), payrollApi.listConfigurations(shopId), payrollApi.listPeriods(shopId),
@@ -108,21 +133,24 @@ export default function PayrollPage() {
     void run(() => payrollApi.getRecord(selected.id, row.id!), setRecord);
   };
 
+  if (!accessChecked) return <div className="h-32 animate-pulse rounded-xl bg-[var(--line)]" />;
+  if (unavailableRole) return <section className="max-w-xl border border-[var(--line)] bg-[var(--surface)] p-6"><h1 className="text-2xl font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</h1><p className="mt-3 leading-7 text-[var(--muted)]">{roleCodes.includes("SUPERVISOR") ? "Supervisor ใช้งาน Attendance และ Leave approval ตามแผนกเมื่อ workflow นั้นเชื่อมเสร็จ" : "Employee ใช้งาน self-service และ payslip เมื่อ feature นั้นพร้อม"}</p></section>;
+
   return <div className="space-y-8">
     <header className="border-b border-[var(--line)] pb-7">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div><p className="text-sm font-semibold text-[var(--accent)]">รอบจ่ายและหลักฐานการคำนวณ</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">สมุดงานเงินเดือน</h1><p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">ตรวจรายการรายวัน แก้ blocker แล้วจึงล็อกรอบ ข้อมูลที่ล็อกแล้วแก้ผ่าน adjustment เท่านั้น</p></div>
         <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} className="flex w-full items-end gap-2 sm:w-auto">
-          <label className="min-w-0 flex-1 text-sm sm:w-32">Shop ID<input className={field} value={shopId} onChange={(event) => setShopId(event.target.value)} inputMode="numeric" required /></label>
-          <button className={button} disabled={loading}>{loading ? "กำลังโหลด…" : "เปิดสมุดงาน"}</button>
+          <label className="min-w-0 flex-1 text-sm sm:w-60">ร้าน<select className={field} value={shopId} onChange={(event) => setShopId(event.target.value)} required><option value="">เลือกร้าน</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.code} · {shop.name}</option>)}</select></label>
+          <button className={button} disabled={loading || !shopId}>{loading ? "กำลังโหลด…" : "เปิดสมุดงาน"}</button>
         </form>
       </div>
       {requestId && <p className="mt-3 text-xs text-[var(--muted)]">Request ID: {requestId}</p>}
     </header>
 
-    {notice && <p role="status" className="border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
-    {error && <p role="alert" className="border-l-4 border-red-600 bg-red-50 px-4 py-3 text-sm text-red-900">{error}</p>}
-    {canMutate === false && <p className="border-l-4 border-blue-600 bg-blue-50 px-4 py-3 text-sm text-blue-950">โหมดอ่านอย่างเดียว: บัญชีนี้ดูข้อมูลตามสาขาที่ได้รับสิทธิ์ แต่สร้าง คำนวณ หรือล็อกรอบไม่ได้</p>}
+    {notice && <p role="status" className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
+    {error && <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{error}</p>}
+    {canMutate === false && <p className="border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">โหมดอ่านอย่างเดียว: Branch Manager ดูข้อมูลตามสาขาที่ได้รับสิทธิ์ แต่สร้าง คำนวณ หรือล็อกรอบไม่ได้</p>}
 
     {canMutate !== false && <section className="grid gap-px overflow-hidden border border-[var(--line)] bg-[var(--line)] lg:grid-cols-2">
       <details className="bg-[var(--surface)] p-5" open><summary className="cursor-pointer font-semibold">เพิ่มค่าคำนวณแบบ effective-dated</summary>
@@ -131,7 +159,7 @@ export default function PayrollPage() {
           <label className="text-sm">หน่วย<input className={`${field} bg-[var(--canvas)]`} value={configurationOptions[configurationKey].unitLabel} readOnly /></label>
           <label className="text-sm">ค่า<input className={field} name="numeric_value" inputMode="decimal" placeholder="20.0000" required /></label>
           <label className="text-sm">เริ่มใช้<input className={field} name="effective_from" type="date" required /></label>
-          <label className="text-sm sm:col-span-2">Branch ID <span className="text-[var(--muted)]">(เว้นว่าง = ทั้งร้าน)</span><input className={field} name="branch_id" inputMode="numeric" /></label>
+          <label className="text-sm sm:col-span-2">สาขา <span className="text-[var(--muted)]">(เว้นว่าง = ทั้งร้าน)</span><select className={field} name="branch_id"><option value="">ทั้งร้าน</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label>
           <button className={`${button} sm:col-span-2 sm:justify-self-start`} disabled={busy}>บันทึกค่าคำนวณ</button>
         </form>
       </details>
@@ -162,6 +190,6 @@ export default function PayrollPage() {
 
     {canMutate !== false && <section className="grid gap-6 border-t border-[var(--line)] pt-7 lg:grid-cols-[1fr_1.3fr]"><div><h2 className="text-xl font-semibold">Adjustment หลังล็อกรอบ</h2><p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">ไม่แก้รายการเดิม ระบุ payroll record ที่ล็อกแล้วและรอบถัดไปที่จะนำส่วนต่างไปใช้</p></div><form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void run(() => payrollApi.requestAdjustment({ original_payroll_record_id: String(form.get("record_id")), applied_payroll_period_id: String(form.get("target_period_id")), direction: String(form.get("direction")) as "earning" | "deduction", amount: String(form.get("amount")), reason: String(form.get("reason")) }), () => undefined, "ส่ง adjustment เพื่ออนุมัติแล้ว"); }} className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Locked record ID<input className={field} name="record_id" inputMode="numeric" required /></label><label className="text-sm">Target period ID<input className={field} name="target_period_id" inputMode="numeric" required /></label><label className="text-sm">ทิศทาง<select className={field} name="direction"><option value="earning">เพิ่มรายได้</option><option value="deduction">เพิ่มรายการหัก</option></select></label><label className="text-sm">จำนวนเงิน<input className={field} name="amount" inputMode="decimal" required /></label><label className="text-sm sm:col-span-2">เหตุผล<input className={field} name="reason" required maxLength={1000} /></label><button className={`${button} sm:col-span-2 sm:justify-self-start`} disabled={busy}>ส่ง Adjustment</button></form></section>}
 
-    <details className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ค่าคำนวณที่โหลดแล้ว ({configurations.length})</summary><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? `สาขา ${row.branch_id}` : "ทั้งร้าน"}</td><td>{row.numeric_value} {unitLabel(row.unit)}</td><td>{row.effective_from}</td></tr>)}</tbody></table></div></details>
+    <details className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ความพร้อมของค่าคำนวณ ({configurations.length})</summary><div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]"><div className="bg-[var(--accent-soft)] p-4 text-sm"><strong className="block">ก่อน preview/lock</strong><p className="mt-2 leading-6">{missingConfigurationKeys.length ? `ยังขาด ${missingConfigurationKeys.map(configurationLabel).join(" · ")}` : "มีค่าหลักครบแล้ว — ตรวจ effective date ให้ครอบคลุมงวดที่เลือก"}</p>{shops.length === 0 ? <Link href="/settings" className="mt-3 inline-block font-semibold underline underline-offset-4">ไปเพิ่มร้าน</Link> : null}</div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? `สาขา ${row.branch_id}` : "ทั้งร้าน"}</td><td>{row.numeric_value} {unitLabel(row.unit)}</td><td>{row.effective_from}</td></tr>)}</tbody></table></div></div></details>
   </div>;
 }

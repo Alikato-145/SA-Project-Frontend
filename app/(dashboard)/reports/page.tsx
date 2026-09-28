@@ -1,0 +1,7 @@
+"use client";
+import { useState } from "react";
+export default function ReportsPage() {
+  const [periodId, setPeriodId] = useState(""); const [message, setMessage] = useState("");
+  const download = (kind: "bank-transfer" | "social-security") => { if (!periodId) return setMessage("กรุณาระบุ payroll period ID"); window.open(`/api/v1/reports/${kind}.csv?period_id=${encodeURIComponent(periodId)}`, "_blank", "noopener,noreferrer"); setMessage("กำลังเปิดไฟล์ CSV"); };
+  return <div className="space-y-6"><header className="border-b border-[var(--line)] pb-6"><p className="text-sm font-semibold text-[var(--accent)]">Accounting</p><h1 className="mt-2 text-3xl font-semibold">รายงานส่งออก</h1><p className="mt-2 text-[var(--muted)]">ส่งออกได้เฉพาะข้อมูลจากรอบที่ล็อกแล้ว</p></header><section className="max-w-md space-y-4 border border-[var(--line)] bg-[var(--surface)] p-5"><label className="block text-sm">Payroll period ID<input className="mt-1 w-full border border-[var(--line)] p-2" inputMode="numeric" value={periodId} onChange={(event) => setPeriodId(event.target.value)} /></label><div className="flex flex-wrap gap-2"><button className="bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-white" onClick={() => download("bank-transfer")}>Bank transfer CSV</button><button className="border border-[var(--line)] px-4 py-2 text-sm font-semibold" onClick={() => download("social-security")}>Social security CSV</button></div>{message && <p role="status" className="text-sm text-[var(--muted)]">{message}</p>}</section></div>;
+}
