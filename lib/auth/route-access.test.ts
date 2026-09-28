@@ -11,9 +11,9 @@ describe("dashboard route access policy", () => {
     expect(routePolicyFor("/organization").roles).toEqual(["OWNER", "HR"]);
 
     for (const pathname of ["/attendance", "/leave", "/overtime", "/finance"]) {
-      expect(routePolicyFor(pathname).state).toBe("unavailable");
+      expect(routePolicyFor(pathname).state).toBe("released");
       expect(routePolicyFor(pathname).known).toBe(true);
-      expect(routePolicyFor(pathname).roles).toEqual([]);
+      expect(routePolicyFor(pathname).roles).toContain("EMPLOYEE");
     }
     expect(routePolicyFor("/unlisted")).toEqual({ known: false, roles: [], state: "unavailable" });
   });

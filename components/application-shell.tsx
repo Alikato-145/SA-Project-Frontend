@@ -8,7 +8,10 @@ import { canAccessDashboardPath } from "@/lib/auth/route-access";
 const navigation = [
   { label: "ภาพรวม", href: "/dashboard" },
   { label: "พนักงาน", href: "/employees" },
-  { label: "เวลาและการลา", available: false },
+  { label: "เวลาเข้างาน", href: "/attendance" },
+  { label: "การลา", href: "/leave" },
+  { label: "ล่วงเวลา", href: "/overtime" },
+  { label: "การเงินพนักงาน", href: "/finance" },
   { label: "เงินเดือน", href: "/payroll" },
   { label: "การตั้งค่า", href: "/settings" },
   { label: "สลิปเงินเดือน", href: "/payslips" },
@@ -24,13 +27,13 @@ function NavigationItems({ roleCodes }: { roleCodes: readonly string[] }) {
           if (!canAccessDashboardPath(item.href, roleCodes)) return null;
           return <li key={item.label}><Link href={item.href} aria-current={pathname === item.href ? "page" : undefined} className={`block rounded-lg px-3 py-2.5 text-sm font-semibold ${pathname === item.href ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--muted)]"}`}>{item.label}</Link></li>;
         }
-        return <li key={item.label}><span aria-disabled="true" className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm text-[var(--muted)]">{item.label}<span className="text-xs">เร็ว ๆ นี้</span></span></li>;
+
       })}
     </ul>
   );
 }
 
-export function ApplicationShell({ children, roleCodes = [] }: { children: ReactNode; roleCodes?: readonly string[] }) {
+export function ApplicationShell({ children, roleCodes = [], accountName }: { children: ReactNode; roleCodes?: readonly string[]; accountName?: string }) {
   return (
     <div className="min-h-[100dvh] bg-[var(--paper)] lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside className="hidden border-r border-[var(--line)] bg-[var(--surface)] px-5 py-7 lg:flex lg:flex-col">
@@ -40,8 +43,8 @@ export function ApplicationShell({ children, roleCodes = [] }: { children: React
         </Link>
         <nav className="flex-1"><NavigationItems roleCodes={roleCodes} /></nav>
         <div className="border-t border-[var(--line)] pt-4">
-          <p className="text-sm font-medium">บัญชีตัวอย่าง</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">รอเชื่อมต่อระบบเข้าสู่ระบบ</p>
+          <p className="text-sm font-medium">{accountName ?? "Haris Payroll"}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">สิทธิ์ตามบัญชีที่เข้าสู่ระบบ</p>
         </div>
       </aside>
 
@@ -50,7 +53,7 @@ export function ApplicationShell({ children, roleCodes = [] }: { children: React
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
             <Link href="/dashboard" className="font-semibold lg:hidden">Haris Payroll</Link>
             <p className="hidden text-sm text-[var(--muted)] lg:block">พื้นที่ทำงานส่วนกลาง</p>
-            <span className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium">Mock account</span>
+            <span className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium">{accountName ?? "Haris Payroll"}</span>
           </div>
           <details className="mt-3 lg:hidden">
             <summary className="cursor-pointer rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium">เปิดเมนู</summary>
