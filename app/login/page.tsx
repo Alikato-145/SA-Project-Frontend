@@ -42,31 +42,29 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--paper)] px-4 py-4 sm:px-6 sm:py-8 lg:grid lg:place-items-center lg:p-10">
-      <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-[0_18px_42px_rgba(21,33,29,0.08)] lg:grid lg:max-w-5xl lg:grid-cols-[1.08fr_0.92fr] lg:shadow-[0_24px_56px_rgba(21,33,29,0.09)]">
-        <section className="relative overflow-hidden bg-[var(--ink)] px-6 py-7 text-white sm:px-10 sm:py-9 lg:min-h-[38rem] lg:px-12 lg:py-14">
-          <div className="absolute -right-24 top-12 hidden size-72 rounded-full border border-white/10 lg:block" aria-hidden="true" />
-          <div className="absolute -bottom-32 left-16 hidden size-80 rounded-full border border-white/10 lg:block" aria-hidden="true" />
-          <div className="relative flex h-full flex-col justify-between">
+    <main className="min-h-[100dvh] bg-[var(--paper)] lg:grid lg:place-items-center lg:px-10 lg:py-12">
+      <div className="mx-auto w-full max-w-6xl border-y border-[var(--line)] bg-[var(--surface)] lg:grid lg:grid-cols-[1fr_0.9fr] lg:border-x">
+        <section className="bg-[var(--ink)] px-6 py-8 text-white sm:px-10 sm:py-12 lg:min-h-[38rem] lg:px-14 lg:py-16">
+          <div className="flex h-full flex-col justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <span className="grid size-11 place-items-center rounded-xl bg-white text-sm font-bold text-[var(--ink)]">HP</span>
+                <span className="grid size-11 place-items-center rounded-lg bg-white text-sm font-bold text-[var(--ink)]">HP</span>
                 <span className="text-lg font-semibold tracking-tight">Haris Payroll</span>
               </div>
-              <h1 className="mt-9 max-w-md text-3xl font-semibold leading-[1.12] tracking-[-0.035em] sm:text-4xl lg:mt-14 lg:text-5xl">
+              <h1 className="mt-10 max-w-lg text-3xl font-semibold leading-[1.12] tracking-[-0.035em] sm:text-4xl lg:mt-16 lg:text-5xl">
                 เข้าสู่พื้นที่ทำงานเงินเดือน
               </h1>
-              <p className="mt-4 max-w-md text-sm leading-6 text-white/72 sm:text-base sm:leading-7">
+              <p className="mt-5 max-w-md text-sm leading-6 text-white/72 sm:text-base sm:leading-7">
                 ตรวจรายการรายวัน แก้ blocker และล็อกรอบเงินเดือนอย่างรอบคอบ
               </p>
             </div>
-            <p className="mt-9 hidden max-w-sm border-t border-white/15 pt-5 text-sm leading-6 text-white/62 lg:block">
+            <p className="mt-10 max-w-sm border-t border-white/15 pt-5 text-sm leading-6 text-white/62">
               สิทธิ์เข้าถึงจะถูกตรวจสอบตามบทบาทและขอบเขตสาขาของบัญชีคุณ
             </p>
           </div>
         </section>
 
-        <section className="px-6 py-7 sm:px-10 sm:py-10 lg:flex lg:flex-col lg:justify-center lg:px-12">
+        <section className="px-6 py-8 sm:px-10 sm:py-12 lg:flex lg:flex-col lg:justify-center lg:px-14">
           <div className="max-w-sm">
             <h2 className="text-3xl font-semibold tracking-[-0.03em]">เข้าสู่ระบบ</h2>
             <p className="mt-3 leading-7 text-[var(--muted)]">
@@ -78,7 +76,8 @@ export default function LoginPage() {
                 ชื่อผู้ใช้
                 <input
                   autoComplete="username"
-                  className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-3 text-base outline-none transition focus:border-[var(--accent)]"
+                  autoFocus
+                  className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3.5 py-3 text-base outline-none transition focus:border-[var(--accent)]"
                   disabled={pending}
                   id="username"
                   name="username"
@@ -92,7 +91,7 @@ export default function LoginPage() {
                 รหัสผ่าน
                 <input
                   autoComplete="current-password"
-                  className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-3 text-base outline-none transition focus:border-[var(--accent)]"
+                  className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3.5 py-3 text-base outline-none transition focus:border-[var(--accent)]"
                   disabled={pending}
                   id="password"
                   name="password"
@@ -104,13 +103,13 @@ export default function LoginPage() {
               </label>
 
               {error ? (
-                <p className="rounded-xl bg-red-50 px-3.5 py-3 text-sm leading-6 text-red-900" role="alert">
+                <p className="border border-red-200 bg-red-50 px-3.5 py-3 text-sm leading-6 text-red-900" role="alert">
                   {error}
                 </p>
               ) : null}
 
               <button
-                className="w-full rounded-xl bg-[var(--accent)] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(38,115,91,0.24)] transition hover:bg-[#1d5e49] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-lg bg-[var(--accent)] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1d5e49] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={pending}
                 type="submit"
               >

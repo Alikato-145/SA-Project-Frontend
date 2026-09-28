@@ -32,4 +32,7 @@ export const authApi = {
       credentials: "include",
     });
   },
+  current() {
+    return apiRequest<AuthenticatedActor>("/v1/auth/me", { credentials: "include" });
+  },
 };
