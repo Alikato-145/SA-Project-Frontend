@@ -25,7 +25,8 @@ function NavigationItems({ roleCodes }: { roleCodes: readonly string[] }) {
     <ul className="grid gap-1" aria-label="เมนูหลัก">
       {navigation.map((item) => {
         if (!canAccessDashboardPath(item.href, roleCodes)) return null;
-        return <li key={item.label}><Link href={item.href} aria-current={pathname === item.href ? "page" : undefined} className={`block rounded-lg px-3 py-2.5 text-sm font-semibold ${pathname === item.href ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--muted)]"}`}>{item.label}</Link></li>;
+        const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+        return <li key={item.label}><Link href={item.href} aria-current={active ? "page" : undefined} className={`block rounded-lg px-3 py-2.5 text-sm font-semibold ${active ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"}`}>{item.label}</Link></li>;
       })}
     </ul>
   );
@@ -40,6 +41,7 @@ export function ApplicationShell({ children, roleCodes = [], username }: { child
   };
   return (
     <div className="min-h-[100dvh] bg-[var(--paper)] lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <a className="skip-link" href="#main-content">ข้ามไปยังเนื้อหาหลัก</a>
       <aside className="hidden border-r border-[var(--line)] bg-[var(--surface)] px-5 py-7 lg:flex lg:flex-col">
         <Link href="/dashboard" className="mb-10 flex items-center gap-3 rounded-md">
           <span className="grid size-10 place-items-center rounded-xl bg-[var(--ink)] text-sm font-bold text-white">HP</span>
@@ -60,11 +62,11 @@ export function ApplicationShell({ children, roleCodes = [], username }: { child
             <span className="max-w-40 truncate rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium">{username ?? "บัญชีผู้ใช้"}</span>
           </div>
           <details className="mt-3 lg:hidden">
-            <summary className="cursor-pointer rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium">เปิดเมนู</summary>
+            <summary className="cursor-pointer rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium">เปิดเมนูหลัก</summary>
             <nav className="mt-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-2"><NavigationItems roleCodes={roleCodes} /></nav>
           </details>
         </header>
-        <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-12">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-12">{children}</main>
       </div>
     </div>
   );

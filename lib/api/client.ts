@@ -21,6 +21,39 @@ export class ApiClientError extends Error {
   }
 }
 
+const thaiErrorMessageByCode: Record<string, string> = {
+  AUTH_REQUIRED: "กรุณาเข้าสู่ระบบก่อนดำเนินการ",
+  INVALID_CREDENTIALS: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+  ACCOUNT_DISABLED: "บัญชีนี้ถูกปิดการใช้งาน",
+  ACCOUNT_LOCKED: "บัญชีถูกล็อกชั่วคราว โปรดลองใหม่ภายหลัง",
+  FORBIDDEN_SCOPE: "คุณไม่มีสิทธิ์ดำเนินการนี้",
+  ORIGIN_NOT_ALLOWED: "ไม่อนุญาตให้ส่งคำขอจากหน้านี้",
+  RESOURCE_NOT_FOUND: "ไม่พบข้อมูลที่ต้องการ",
+  STATE_CONFLICT: "ไม่สามารถดำเนินการได้ เนื่องจากสถานะข้อมูลปัจจุบันไม่รองรับ",
+  VALIDATION_ERROR: "ข้อมูลที่กรอกไม่ถูกต้องหรือไม่ครบถ้วน",
+  MALFORMED_REQUEST: "รูปแบบคำขอไม่ถูกต้อง",
+  JSON_CONTENT_TYPE_REQUIRED: "รูปแบบข้อมูลที่ส่งไม่ถูกต้อง",
+  DUPLICATE_CODE: "รหัสนี้ถูกใช้งานแล้ว",
+  DUPLICATE_IDENTITY: "ข้อมูลระบุตัวตนของพนักงานนี้ถูกใช้งานแล้ว",
+  DUPLICATE_USERNAME: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว",
+  EMPLOYEE_ACCOUNT_ALREADY_EXISTS: "พนักงานนี้มีบัญชีผู้ใช้อยู่แล้ว",
+  DUPLICATE_ROLE_GRANT: "มีการกำหนดบทบาทนี้อยู่แล้ว",
+  INVALID_ROLE_SCOPE: "ขอบเขตบทบาทไม่ถูกต้อง",
+  INVALID_ORGANIZATION_RELATION: "ขอบเขตหน่วยงานไม่ถูกต้อง",
+  EFFECTIVE_DATE_OVERLAP: "ช่วงวันที่มีข้อมูลเดิมทับซ้อนอยู่",
+  PAYROLL_PERIOD_LOCKED: "รอบเงินเดือนถูกล็อกแล้ว จึงแก้ไขไม่ได้",
+  PAYROLL_PERIOD_NOT_FOUND: "ไม่พบรอบเงินเดือน",
+  PAYROLL_ATTENDANCE_INCOMPLETE: "ข้อมูลการลงเวลาของรอบเงินเดือนยังไม่ครบ",
+  PAYROLL_APPROVALS_PENDING: "ยังมีรายการรออนุมัติในรอบเงินเดือนนี้",
+  PAYROLL_NEGATIVE_NET_PAY: "ไม่สามารถดำเนินการได้ เนื่องจากเงินสุทธิจะติดลบ",
+  INTERNAL_ERROR: "ระบบเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+};
+
+const localizeApiError = (code: string, fallback: string) =>
+  /[฀-๿]/.test(fallback)
+    ? fallback
+    : thaiErrorMessageByCode[code] ?? "ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง";
+
 type RequestOptions = RequestInit & {
   baseUrl?: string;
   fetcher?: typeof fetch;
@@ -85,7 +118,7 @@ export async function apiRequestEnvelope<T>(
   if (isErrorBody(body) || isErrorEnvelope(body)) {
     throw new ApiClientError(
       body.error.code,
-      body.error.message,
+      localizeApiError(body.error.code, body.error.message),
       response.status,
       body.error.details,
     );

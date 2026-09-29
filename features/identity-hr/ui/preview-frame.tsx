@@ -19,7 +19,7 @@ export function PreviewFrame({
             <span className={styles.brandMark}>H</span>
             <span>
               <strong>Haris Payroll</strong>
-              <span>พื้นที่งานบุคคล · A4 preview</span>
+              <span>พื้นที่งานบุคคล</span>
             </span>
           </Link>
           <nav className={styles.nav} aria-label="เมนูงานบุคคล">
@@ -35,12 +35,9 @@ export function PreviewFrame({
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
-          <div className={styles.stamp}>
-            <strong>Feature preview</strong>
-            <p>
-              ข้อมูลตัวอย่างปลอดความลับ รอเชื่อม shared API client
-              และสิทธิ์จริงจาก Person C
-            </p>
+          <div className={styles.stamp} role="status">
+            <strong>ข้อมูลตัวอย่าง</strong>
+            <p>หน้านี้ใช้สำหรับดูรูปแบบข้อมูล งานบันทึกและสิทธิ์จริงจะใช้เมื่อเชื่อมระบบส่วนกลางแล้ว</p>
           </div>
         </section>
         {children}

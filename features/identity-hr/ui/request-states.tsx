@@ -17,7 +17,7 @@ export function RequestState({
   return (
     <section
       className={`${styles.notice} ${tone}`}
-      role={kind === "error" ? "alert" : "status"}
+      role={kind === "error" || kind === "forbidden" ? "alert" : "status"}
       aria-live="polite"
     >
       <strong>{title}</strong>

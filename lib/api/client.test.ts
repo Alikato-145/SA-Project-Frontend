@@ -34,6 +34,42 @@ describe("apiRequest", () => {
     });
   });
 
+  test("translates known API error codes for the interface", async () => {
+    await expect(
+      apiRequest("/operations/leave-requests", {
+        fetcher: fetcher(
+          { ok: false, error: { code: "PAYROLL_PERIOD_LOCKED", message: "The payroll period is locked." } },
+          409,
+        ),
+      }),
+    ).rejects.toMatchObject({
+      code: "PAYROLL_PERIOD_LOCKED",
+      message: "รอบเงินเดือนถูกล็อกแล้ว จึงแก้ไขไม่ได้",
+    });
+  });
+
+  test("keeps a safe Thai detail for a known API error code", async () => {
+    await expect(
+      apiRequest("/operations/leave-requests", {
+        fetcher: fetcher(
+          { ok: false, error: { code: "STATE_CONFLICT", message: "ช่วงวันที่ลาซ้อนกับคำขอเดิม" } },
+          409,
+        ),
+      }),
+    ).rejects.toMatchObject({
+      code: "STATE_CONFLICT",
+      message: "ช่วงวันที่ลาซ้อนกับคำขอเดิม",
+    });
+  });
+
+  test("does not expose an unknown English API error", async () => {
+    await expect(
+      apiRequest("/operations/unknown", {
+        fetcher: fetcher({ ok: false, error: { code: "UNEXPECTED", message: "Internal implementation detail" } }, 500),
+      }),
+    ).rejects.toMatchObject({ message: "ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง" });
+  });
+
   test("returns request correlation from the backend envelope", async () => {
     await expect(apiRequestEnvelope<{ id: string }>("/v1/payroll/periods/1", {
       fetcher: fetcher({ data: { id: "1" }, request_id: "request-1" }),
