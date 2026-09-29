@@ -1,4 +1,4 @@
-import { AccountCreateView } from "@/features/identity-hr/accounts/account-views";
+import { AccountCreateLive } from "@/features/identity-hr/accounts/account-live";
 import { PreviewFrame } from "@/features/identity-hr/ui/preview-frame";
 
 export default function NewAccountPage() {
@@ -7,7 +7,7 @@ export default function NewAccountPage() {
       title="สร้างบัญชีผู้ใช้"
       description="แยกบัญชีเข้าสู่ระบบออกจากข้อมูลพนักงาน และกำหนดขอบเขตสิทธิ์ตั้งแต่เริ่มต้น"
     >
-      <AccountCreateView />
+      <AccountCreateLive />
     </PreviewFrame>
   );
 }

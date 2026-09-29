@@ -36,7 +36,7 @@ test("compatibility operation requests retain the signed-in API envelope", async
   globalThis.fetch = ((input: string | URL | Request, request?: RequestInit) => {
     url = String(input);
     init = request;
-    return Promise.resolve(new Response(JSON.stringify({ data: [] })));
+    return Promise.resolve(new Response(JSON.stringify({ data: [], request_id: "req-compat" })));
   }) as typeof fetch;
   try {
     await operationsApi.request("/leave-requests?employee_id=4");
