@@ -1,13 +1,20 @@
 import { OnboardingForm } from "@/features/identity-hr/onboarding/onboarding-form";
-import { PreviewFrame } from "@/features/identity-hr/ui/preview-frame";
+import { styles } from "@/features/identity-hr/ui/primitives";
 
 export default function NewEmployeePage() {
   return (
-    <PreviewFrame
-      title="รับพนักงานใหม่"
-      description="กรอกตัวตนและข้อมูลการจ้างครั้งแรกเป็นขั้นตอนเดียว ผลลัพธ์ต้องสำเร็จทั้งหมดหรือไม่บันทึกเลย"
-    >
-      <OnboardingForm />
-    </PreviewFrame>
+    <section className={styles.scope}>
+      <div className={styles.frame}>
+        <header className={styles.sectionHead}>
+          <div>
+            <h1>รับพนักงานใหม่</h1>
+            <p className={styles.muted}>
+              กรอกข้อมูลพนักงานและการจ้างครั้งแรก ระบบจะบันทึกทุกส่วนพร้อมกัน
+            </p>
+          </div>
+        </header>
+        <OnboardingForm />
+      </div>
+    </section>
   );
 }

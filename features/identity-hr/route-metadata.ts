@@ -2,19 +2,19 @@ export const identityHrRoutes = [
   {
     label: "บัญชีผู้ใช้",
     href: "/accounts",
-    capability: "accounts:read",
+    roles: ["OWNER", "HR"],
     group: "จัดการบุคลากร",
   },
   {
     label: "โครงสร้างองค์กร",
     href: "/organization",
-    capability: "organization:read",
+    roles: ["OWNER", "HR"],
     group: "จัดการบุคลากร",
   },
   {
     label: "ทะเบียนพนักงาน",
     href: "/employees",
-    capability: "employees:read",
+    roles: ["EMPLOYEE", "SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"],
     group: "จัดการบุคลากร",
   },
 ] as const;
