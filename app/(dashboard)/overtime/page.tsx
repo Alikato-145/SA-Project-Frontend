@@ -1,59 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { EmployeePicker } from "@/components/employee-picker";
+import { Button } from "@/components/ui/button";
+import { Feedback, PageHeader, StatusBadge, formatThaiDate, thaiLabel } from "@/components/workspace-ui";
+import { authApi } from "@/lib/auth/auth-api";
+import { operationsApi } from "@/lib/operations/operations-api";
 
-type Overtime = { id: number; employeeId: number; overtimeDate: string;
-  overtimeType: "hourly" | "rest_day" | "public_holiday"; hours: string | null;
-  dayUnits: string | null; reason: string | null; status: string };
-const field = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2";
-const primary = "rounded-lg bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50";
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, { credentials: "same-origin", ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers } });
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.message ?? data?.code ?? `Request failed (${response.status})`);
-  return data as T;
-}
+type Overtime = { id: string; employeeId: string; overtimeDate: string; overtimeType: "hourly" | "rest_day" | "public_holiday"; hours: string | null; dayUnits: string | null; reason: string | null; status: string };
+const field = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[var(--ink)]";
+const api = operationsApi.request;
+const canManageOvertime = (roles: string[]) => roles.some((role) => ["SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"].includes(role));
+
 export default function OvertimePage() {
   const [employeeId, setEmployeeId] = useState("");
+  const [ownEmployeeName, setOwnEmployeeName] = useState("");
+  const [canSelectEmployee, setCanSelectEmployee] = useState(false);
+  const [canApprove, setCanApprove] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [rows, setRows] = useState<Overtime[]>([]);
   const [type, setType] = useState<Overtime["overtimeType"]>("hourly");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    void authApi.current().then((actor) => {
+      const manages = canManageOvertime(actor.grants.map((grant) => grant.role_code));
+      setCanApprove(manages); setCanSelectEmployee(manages);
+      if (actor.account.employee && !manages) {
+        setEmployeeId(actor.account.employee.id);
+        setOwnEmployeeName(actor.account.employee.display_name);
+      }
+    }).catch((cause) => setError(cause instanceof Error ? cause.message : "ไม่สามารถตรวจสอบสิทธิ์ได้"))
+      .finally(() => setAuthReady(true));
+  }, []);
+
   const load = async () => {
-    if (!employeeId) { setError("Enter an employee ID."); return; }
+    if (!employeeId) { setError("เลือกพนักงานก่อนโหลดข้อมูล OT"); return; }
     setLoading(true); setError(""); setRows([]);
     try { setRows(await api<Overtime[]>(`/overtime-records?employee_id=${encodeURIComponent(employeeId)}`)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load overtime."); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถโหลดคำขอ OT ได้"); }
     finally { setLoading(false); }
   };
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setBusy(true); setError(""); setMessage("");
+    event.preventDefault();
+    if (!employeeId) { setError("เลือกพนักงานก่อนส่งคำขอ OT"); return; }
+    setBusy(true); setError(""); setMessage("");
     const form = new FormData(event.currentTarget);
     try {
       await api("/overtime-records", { method: "POST", body: JSON.stringify({
-        employee_id: Number(form.get("employee_id")), overtime_date: form.get("overtime_date"),
-        overtime_type: type, ...(type === "hourly" ? { hours: form.get("hours") } : { day_units: form.get("day_units") }),
-        work_day_record_id: form.get("work_day_record_id") ? Number(form.get("work_day_record_id")) : undefined,
+        employee_id: employeeId, overtime_date: form.get("overtime_date"), overtime_type: type,
+        ...(type === "hourly" ? { hours: form.get("hours") } : { day_units: form.get("day_units") }),
+        work_day_record_id: form.get("work_day_record_id") ? String(form.get("work_day_record_id")) : undefined,
         reason: form.get("reason"),
       }) });
-      setMessage("Overtime request submitted."); await load();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not submit overtime."); }
+      setMessage("ส่งคำขอ OT แล้ว รอผู้มีสิทธิ์พิจารณา"); await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถส่งคำขอ OT ได้"); }
     finally { setBusy(false); }
   };
-  const decide = async (id: number, action: "approve" | "reject", remark: string) => {
+  const decide = async (id: string, action: "approve" | "reject", remark: string) => {
     setBusy(true); setError(""); setMessage("");
-    try { await api(`/overtime-records/${id}/${action}`, { method: "POST", body: JSON.stringify({ remark }) });
-      setMessage(`Overtime ${action === "approve" ? "approved" : "rejected"}.`); await load(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not decide overtime."); }
+    try {
+      await api(`/overtime-records/${id}/${action}`, { method: "POST", body: JSON.stringify({ remark }) });
+      setMessage(action === "approve" ? "อนุมัติ OT แล้ว" : "ไม่อนุมัติ OT แล้ว"); await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถดำเนินการคำขอ OT ได้"); }
     finally { setBusy(false); }
   };
-  return <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 text-slate-900 sm:px-8"><header><p className="text-sm font-semibold uppercase tracking-widest text-teal-700">Approvals</p><h1 className="text-3xl font-bold">Overtime</h1><p className="mt-2 text-slate-600">Only explicitly approved overtime is payable.</p></header>
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]"><section className="rounded-2xl border border-slate-200 p-5"><form onSubmit={(event) => { event.preventDefault(); void load(); }} className="flex flex-wrap items-end gap-3"><label className="min-w-40 flex-1 text-sm">Employee ID<input className={field} type="number" min="1" required value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} /></label><button className={primary} disabled={loading}>{loading ? "Loading…" : "Load overtime"}</button></form>
-      {message && <p role="status" className="mt-4 rounded-lg bg-emerald-50 p-3 text-emerald-800">{message}</p>}{error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}
-      <div className="mt-6 space-y-4"><h2 className="text-xl font-semibold">Requests</h2>{rows.length === 0 && !loading && <p className="text-slate-600">No overtime requests loaded.</p>}{rows.map((row) => <article key={row.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex justify-between gap-2"><div><p className="font-semibold">{row.overtimeDate} · {row.overtimeType.replaceAll("_", " ")}</p><p className="text-sm text-slate-600">{row.hours ? `${row.hours} hours` : `${row.dayUnits ?? "0"} day units`} · {row.reason ?? "No reason"}</p></div><span className="h-fit rounded-full bg-white px-3 py-1 text-sm">{row.status}</span></div>{row.status === "pending" && <form onSubmit={(event) => { event.preventDefault(); const action = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("data-action") as "approve" | "reject"; if (action) void decide(row.id, action, String(new FormData(event.currentTarget).get("remark") ?? "")); }} className="mt-4 flex flex-wrap items-end gap-2"><label className="text-sm">Decision note<input className={field} name="remark" /></label><button className={primary} data-action="approve" disabled={busy}>Approve</button><button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" data-action="reject" disabled={busy}>Reject</button></form>}</article>)}</div></section>
-      <form onSubmit={(event) => void submit(event)} className="h-fit space-y-4 rounded-2xl border border-slate-200 p-5"><h2 className="text-xl font-semibold">New overtime request</h2><label className="block text-sm">Employee ID<input className={field} name="employee_id" type="number" min="1" required /></label><label className="block text-sm">Date<input className={field} name="overtime_date" type="date" required /></label><label className="block text-sm">Type<select className={field} value={type} onChange={(event) => setType(event.target.value as Overtime["overtimeType"])}><option value="hourly">Hourly</option><option value="rest_day">Rest day</option><option value="public_holiday">Public holiday</option></select></label>{type === "hourly" ? <label className="block text-sm">Hours<input className={field} name="hours" type="number" min="0.01" step="0.01" required /></label> : <label className="block text-sm">Day units<input className={field} name="day_units" type="number" min="0.01" step="0.01" required /></label>}<label className="block text-sm">Work-day record ID (if applicable)<input className={field} name="work_day_record_id" type="number" min="1" /></label><label className="block text-sm">Reason<input className={field} name="reason" /></label><button className={primary} disabled={busy}>Submit request</button></form>
-    </div></main>;
+
+  return <div className="space-y-8">
+    <PageHeader title="การทำงานล่วงเวลา" description="ส่งคำขอ OT และตรวจสอบผลการพิจารณา OT จะนำไปจ่ายได้เมื่ออนุมัติแล้วเท่านั้น" />
+    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <section className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5">
+        <form onSubmit={(event) => { event.preventDefault(); void load(); }} className="flex flex-wrap items-end gap-3">
+          {canSelectEmployee ? <label className="min-w-52 flex-1 text-sm font-medium">พนักงาน<EmployeePicker className={field} required value={employeeId} onChange={setEmployeeId} /></label> : <p className="min-w-52 flex-1 text-sm font-medium">คำขอ OT ของคุณ<span className="mt-1 block rounded-lg border border-[var(--line)] bg-[var(--paper)] px-3 py-2 font-normal text-[var(--ink)]">{ownEmployeeName || "กำลังตรวจสอบสิทธิ์…"}</span></p>}
+          <Button type="submit" disabled={loading || !authReady || !employeeId}>{loading ? "กำลังโหลด…" : "โหลดคำขอ OT"}</Button>
+        </form>
+        <div className="mt-4 space-y-3">{message ? <Feedback kind="success" detail={message} /> : null}{error ? <Feedback kind="error" title="ทำรายการไม่สำเร็จ" detail={error} /> : null}</div>
+        <div className="mt-6 space-y-4"><h2 className="text-xl font-semibold">คำขอ OT</h2>{rows.length === 0 && !loading ? <Feedback kind="empty" title="ยังไม่มีคำขอ OT" detail="ส่งคำขอใหม่จากแบบฟอร์มด้านขวา หรือเปลี่ยนพนักงานแล้วโหลดข้อมูลอีกครั้ง" /> : null}
+          {rows.map((row) => <article key={row.id} className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4"><div className="flex flex-wrap justify-between gap-3"><div><p className="font-semibold">{formatThaiDate(row.overtimeDate)} · {thaiLabel(row.overtimeType)}</p><p className="mt-1 text-sm leading-6 text-[var(--muted)]">{row.hours ? `${row.hours} ชั่วโมง` : `${row.dayUnits ?? "0"} วัน`} · {row.reason ?? "ไม่ระบุเหตุผล"}</p></div><StatusBadge value={row.status} /></div>
+            {canApprove && row.status === "pending" ? <form onSubmit={(event) => { event.preventDefault(); const action = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("data-action") as "approve" | "reject"; if (action) void decide(row.id, action, String(new FormData(event.currentTarget).get("remark") ?? "")); }} className="mt-4 flex flex-wrap items-end gap-2 border-t border-[var(--line)] pt-4"><label className="min-w-52 flex-1 text-sm">หมายเหตุการพิจารณา<input className={field} name="remark" /></label><Button type="submit" data-action="approve" disabled={busy}>อนุมัติ</Button><Button type="submit" variant="outline" data-action="reject" disabled={busy}>ไม่อนุมัติ</Button></form> : null}
+            {row.status !== "pending" ? <p className="mt-4 border-t border-[var(--line)] pt-3 text-sm text-[var(--muted)]">คำขอนี้พิจารณาเสร็จแล้ว หากข้อมูลคลาดเคลื่อน ให้ติดต่อ HR เพื่อดำเนินการตามขั้นตอนที่บันทึกประวัติได้</p> : null}
+          </article>)}</div>
+      </section>
+      <form onSubmit={(event) => void submit(event)} className="h-fit space-y-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5"><h2 className="text-xl font-semibold">ส่งคำขอ OT ใหม่</h2><p className="text-sm leading-6 text-[var(--muted)]">{canSelectEmployee ? "ใช้พนักงานที่เลือกด้านซ้าย" : "ส่งคำขอในชื่อของคุณเท่านั้น"}</p><label className="block text-sm">วันที่ทำ OT<input className={field} name="overtime_date" type="date" required /></label><label className="block text-sm">ประเภท OT<select className={field} value={type} onChange={(event) => setType(event.target.value as Overtime["overtimeType"])}><option value="hourly">รายชั่วโมง</option><option value="rest_day">วันหยุดประจำสัปดาห์</option><option value="public_holiday">วันหยุดนักขัตฤกษ์</option></select></label>{type === "hourly" ? <label className="block text-sm">จำนวนชั่วโมง<input className={field} name="hours" type="number" min="0.01" step="0.01" required /></label> : <label className="block text-sm">จำนวนวัน<input className={field} name="day_units" type="number" min="0.01" step="0.01" required /></label>}<label className="block text-sm">อ้างอิงรายการลงเวลา <span className="text-[var(--muted)]">(ถ้ามี)</span><input className={field} name="work_day_record_id" type="number" min="1" inputMode="numeric" /></label><label className="block text-sm">เหตุผล<input className={field} name="reason" /></label><Button type="submit" disabled={busy || !authReady || !employeeId}>ส่งคำขอ</Button></form>
+    </div>
+  </div>;
 }

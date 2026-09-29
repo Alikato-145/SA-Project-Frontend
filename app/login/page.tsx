@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "../../lib/api/client";
 import { authApi } from "../../lib/auth/auth-api";
+import styles from "./login.module.css";
 
 const messageFor = (error: unknown) => {
   if (error instanceof ApiClientError) {
@@ -42,30 +43,30 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--paper)] lg:grid lg:place-items-center lg:px-10 lg:py-12">
-      <div className="mx-auto w-full max-w-6xl border-y border-[var(--line)] bg-[var(--surface)] lg:grid lg:grid-cols-[1fr_0.9fr] lg:border-x">
-        <section className="bg-[var(--ink)] px-6 py-8 text-white sm:px-10 sm:py-12 lg:min-h-[38rem] lg:px-14 lg:py-16">
+    <main className={`${styles.shell} bg-[var(--paper)]`}>
+      <div className={styles.card}>
+        <section className={`${styles.hero} bg-[var(--ink)] text-white`}>
           <div className="flex h-full flex-col justify-between">
             <div>
               <div className="flex items-center gap-3">
                 <span className="grid size-11 place-items-center rounded-lg bg-white text-sm font-bold text-[var(--ink)]">HP</span>
                 <span className="text-lg font-semibold tracking-tight">Haris Payroll</span>
               </div>
-              <h1 className="mt-10 max-w-lg text-3xl font-semibold leading-[1.12] tracking-[-0.035em] sm:text-4xl lg:mt-16 lg:text-5xl">
+              <h1 className="mt-8 max-w-lg text-balance text-[clamp(2rem,7vw,3rem)] font-semibold leading-[1.12] tracking-[-0.035em] sm:mt-10 lg:mt-16">
                 เข้าสู่พื้นที่ทำงานเงินเดือน
               </h1>
               <p className="mt-5 max-w-md text-sm leading-6 text-white/72 sm:text-base sm:leading-7">
                 ตรวจรายการรายวัน แก้ blocker และล็อกรอบเงินเดือนอย่างรอบคอบ
               </p>
             </div>
-            <p className="mt-10 max-w-sm border-t border-white/15 pt-5 text-sm leading-6 text-white/62">
+            <p className="mt-8 max-w-sm border-t border-white/15 pt-5 text-sm leading-6 text-white/62 sm:mt-10">
               สิทธิ์เข้าถึงจะถูกตรวจสอบตามบทบาทและขอบเขตสาขาของบัญชีคุณ
             </p>
           </div>
         </section>
 
-        <section className="px-6 py-8 sm:px-10 sm:py-12 lg:flex lg:flex-col lg:justify-center lg:px-14">
-          <div className="max-w-sm">
+        <section className={styles.formPanel}>
+          <div className={styles.formContent}>
             <h2 className="text-3xl font-semibold tracking-[-0.03em]">เข้าสู่ระบบ</h2>
             <p className="mt-3 leading-7 text-[var(--muted)]">
               ใช้บัญชีที่ได้รับสิทธิ์เพื่อไปยังสมุดงานเงินเดือน

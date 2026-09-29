@@ -11,7 +11,7 @@ export type Employee = {
 };
 
 export const employeeApi = {
-  list: () => apiRequest<Employee[]>("/v1/employees?page=1&page_size=50", { credentials: "include" }),
+  list: (search = "") => apiRequest<Employee[]>(`/v1/employees?page=1&page_size=50&status=active${search ? `&search=${encodeURIComponent(search)}` : ""}`, { credentials: "include" }),
   create: (input: { employee_code: string; national_id: string; first_name: string; last_name: string; hire_date: string }) =>
     apiRequest<Employee>("/v1/employees", {
       method: "POST",

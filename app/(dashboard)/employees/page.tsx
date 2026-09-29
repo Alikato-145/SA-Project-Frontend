@@ -1,60 +1,253 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { type FormEvent, useEffect, useState } from "react";
 import { ApiClientError } from "@/lib/api/client";
-import { employeeApi, type Employee } from "@/lib/employee/employee-api";
+import { authApi } from "@/lib/auth/auth-api";
+import type {
+  EmployeeStatus,
+  EmployeeSummary,
+} from "@/features/identity-hr/contracts/types";
+import { employeeReadApi } from "@/features/identity-hr/employees/employee-read-api";
+import { RequestState } from "@/features/identity-hr/ui/request-states";
+import {
+  Field,
+  StatusBadge,
+  styles,
+} from "@/features/identity-hr/ui/primitives";
+
+const statuses: Record<EmployeeStatus, string> = {
+  active: "ทำงานอยู่",
+  inactive: "พักการใช้งาน",
+  suspended: "ระงับชั่วคราว",
+  terminated: "สิ้นสุดการจ้าง",
+};
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<"all" | EmployeeStatus>("all");
+  const [page, setPage] = useState(1);
+  const [refresh, setRefresh] = useState(0);
+  const [rows, setRows] = useState<EmployeeSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    setMessage(null);
-    try { setEmployees(await employeeApi.list()); }
-    catch (error) { setMessage(error instanceof ApiClientError ? error.message : "ไม่สามารถโหลดรายชื่อพนักงานได้"); }
-    finally { setLoading(false); }
-  };
+  const [error, setError] = useState<unknown>(null);
+  const [canManage, setCanManage] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void employeeApi.list()
-      .then((rows) => { if (active) setEmployees(rows); })
-      .catch((error) => { if (active) setMessage(error instanceof ApiClientError ? error.message : "ไม่สามารถโหลดรายชื่อพนักงานได้"); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    authApi
+      .current()
+      .then((actor) => {
+        if (active)
+          setCanManage(
+            actor.grants.some(
+              (grant) =>
+                grant.scope === "all" &&
+                (grant.role_code === "HR" || grant.role_code === "OWNER"),
+            ),
+          );
+      })
+      .catch(() => {
+        if (active) setCanManage(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const create = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setBusy(true);
-    setMessage(null);
-    try {
-      const employee = await employeeApi.create({
-        employee_code: String(form.get("employee_code") ?? ""),
-        national_id: String(form.get("national_id") ?? ""),
-        first_name: String(form.get("first_name") ?? ""),
-        last_name: String(form.get("last_name") ?? ""),
-        hire_date: String(form.get("hire_date") ?? ""),
+  useEffect(() => {
+    const controller = new AbortController();
+    employeeReadApi
+      .list({ page, search, status }, controller.signal)
+      .then((result) => {
+        setRows(result.data);
+        setTotal(result.total);
+        setPageSize(result.page_size);
+        setError(null);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) {
+          setRows([]);
+          setTotal(0);
+          setError(cause);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
       });
-      setEmployees((current) => [...current, employee]);
-      event.currentTarget.reset();
-      setMessage(`สร้าง ${employee.employee_code} แล้ว`);
-    } catch (error) { setMessage(error instanceof ApiClientError ? error.message : "ไม่สามารถสร้างพนักงานได้"); }
-    finally { setBusy(false); }
+    return () => controller.abort();
+  }, [page, refresh, search, status]);
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setPage(1);
+    setSearch(searchInput.trim());
+    setRefresh((value) => value + 1);
   };
 
+  const apiError = error instanceof ApiClientError ? error : null;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="space-y-8">
-      <header className="border-b border-[var(--line)] pb-6"><p className="text-sm font-semibold text-[var(--accent)]">HR master data</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">ทะเบียนพนักงาน</h1><p className="mt-2 text-[var(--muted)]">ข้อมูลที่แสดงและสร้างถูกตรวจสิทธิ์จาก A3 บนเซิร์ฟเวอร์</p></header>
-      {message && <p role="status" className="border border-[var(--line)] bg-[var(--surface)] p-4 text-sm">{message}</p>}
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="border-y border-[var(--line)]"><div className="flex items-center justify-between py-3"><h2 className="font-semibold">รายชื่อที่มองเห็นได้</h2><button type="button" className="text-sm underline" onClick={() => void load()} disabled={loading}>โหลดใหม่</button></div>{loading ? <p className="border-t border-[var(--line)] py-6 text-[var(--muted)]">กำลังโหลด…</p> : employees.length === 0 ? <p className="border-t border-[var(--line)] py-6 text-[var(--muted)]">ยังไม่มีพนักงานในขอบเขตนี้</p> : <ul className="divide-y divide-[var(--line)] border-t border-[var(--line)]">{employees.map((employee) => <li key={employee.id} className="py-4"><strong>{employee.employee_code} · {employee.first_name} {employee.last_name}</strong><span className="ml-2 text-sm text-[var(--muted)]">{employee.status}</span></li>)}</ul>}</div>
-        <form onSubmit={create} className="space-y-3 border border-[var(--line)] bg-[var(--surface)] p-5"><h2 className="font-semibold">สร้างพนักงาน</h2><label className="block text-sm">รหัสพนักงาน<input className="mt-1 w-full border border-[var(--line)] p-2" name="employee_code" required maxLength={30} /></label><label className="block text-sm">เลขบัตรประชาชน<input className="mt-1 w-full border border-[var(--line)] p-2" name="national_id" required maxLength={20} inputMode="numeric" /></label><label className="block text-sm">ชื่อ<input className="mt-1 w-full border border-[var(--line)] p-2" name="first_name" required maxLength={100} /></label><label className="block text-sm">นามสกุล<input className="mt-1 w-full border border-[var(--line)] p-2" name="last_name" required maxLength={100} /></label><label className="block text-sm">วันเริ่มงาน<input className="mt-1 w-full border border-[var(--line)] p-2" name="hire_date" type="date" required /></label><button className="w-full bg-[var(--ink)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" disabled={busy}>{busy ? "กำลังบันทึก…" : "สร้างพนักงาน"}</button></form>
-      </section>
+    <div className={styles.scope}>
+      <div className={styles.frame}>
+        <div className={styles.sectionHead}>
+          <div>
+            <h1>ทะเบียนพนักงาน</h1>
+            <p className={styles.muted}>
+              รายชื่อและข้อมูลที่เซิร์ฟเวอร์อนุญาตให้คุณเห็น
+            </p>
+          </div>
+          {canManage && (
+            <Link className={styles.button} href="/employees/new">
+              เพิ่มพนักงาน
+            </Link>
+          )}
+        </div>
+        <div className={styles.grid}>
+          <section
+            className={`${styles.panel} ${styles.span12}`}
+            aria-labelledby="employee-list-heading"
+          >
+            <h2 id="employee-list-heading">รายชื่อพนักงาน</h2>
+            {!loading && !error && (
+              <p className={styles.muted} role="status">
+                พบ {total} คน · หน้า {page} จาก {pageCount}
+              </p>
+            )}
+            <form className={styles.toolbar} onSubmit={submitSearch}>
+              <Field label="ค้นหาชื่อหรือรหัสพนักงาน">
+                <input
+                  className={styles.input}
+                  aria-label="ค้นหาชื่อหรือรหัสพนักงาน"
+                  type="search"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  maxLength={150}
+                />
+              </Field>
+              <Field label="สถานะ">
+                <select
+                  className={styles.select}
+                  aria-label="สถานะพนักงาน"
+                  value={status}
+                  onChange={(event) => {
+                    setLoading(true);
+                    setPage(1);
+                    setStatus(event.target.value as "all" | EmployeeStatus);
+                  }}
+                >
+                  <option value="all">ทุกสถานะ</option>
+                  {Object.entries(statuses).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <button className={styles.button} type="submit">
+                ค้นหา
+              </button>
+              <button
+                className={`${styles.button} ${styles.buttonSecondary}`}
+                type="button"
+                onClick={() => {
+                  setLoading(true);
+                  setRefresh((value) => value + 1);
+                }}
+              >
+                โหลดใหม่
+              </button>
+            </form>
+            {loading ? (
+              <RequestState
+                kind="loading"
+                title="กำลังโหลดรายชื่อ"
+                detail="รอสักครู่"
+              />
+            ) : error ? (
+              <RequestState
+                kind={apiError?.status === 403 ? "forbidden" : "error"}
+                title={
+                  apiError?.status === 403
+                    ? "ไม่มีสิทธิ์ดูรายชื่อนี้"
+                    : "โหลดรายชื่อไม่สำเร็จ"
+                }
+                detail={apiError?.message ?? "ลองโหลดใหม่อีกครั้ง"}
+              />
+            ) : rows.length === 0 ? (
+              <RequestState
+                kind="empty"
+                title="ไม่พบพนักงานในขอบเขตนี้"
+                detail="ลองเปลี่ยนคำค้นหรือสถานะ"
+              />
+            ) : (
+              <ul className={styles.grid} aria-label="รายชื่อพนักงาน">
+                {rows.map((employee) => (
+                  <li className={styles.span6} key={employee.id}>
+                    <article className={styles.panel}>
+                      <div className={styles.sectionHead}>
+                        <div>
+                          <h3>
+                            <Link href={`/employees/${employee.id}`}>
+                              {employee.first_name} {employee.last_name}
+                            </Link>
+                          </h3>
+                          <p className={styles.muted}>
+                            {employee.employee_code}
+                          </p>
+                        </div>
+                        <StatusBadge
+                          tone={employee.status === "active" ? "ok" : "warn"}
+                        >
+                          {statuses[employee.status]}
+                        </StatusBadge>
+                      </div>
+                      <p className={styles.muted}>
+                        สาขา #{employee.branch_id ?? "–"} · แผนก #
+                        {employee.department_id ?? "–"}
+                      </p>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!error && (
+              <nav
+                className={styles.actions}
+                aria-label="แบ่งหน้ารายชื่อพนักงาน"
+              >
+                <button
+                  className={`${styles.button} ${styles.buttonSecondary}`}
+                  type="button"
+                  disabled={loading || page === 1}
+                  onClick={() => {
+                    setLoading(true);
+                    setPage((value) => value - 1);
+                  }}
+                >
+                  หน้าก่อน
+                </button>
+                <span aria-live="polite">หน้า {page}</span>
+                <button
+                  className={`${styles.button} ${styles.buttonSecondary}`}
+                  type="button"
+                  disabled={loading || page >= pageCount}
+                  onClick={() => {
+                    setLoading(true);
+                    setPage((value) => value + 1);
+                  }}
+                >
+                  หน้าถัดไป
+                </button>
+              </nav>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

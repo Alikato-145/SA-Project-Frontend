@@ -35,4 +35,11 @@ export const authApi = {
   current() {
     return apiRequest<AuthenticatedActor>("/v1/auth/me", { credentials: "include" });
   },
+  logout() {
+    return apiRequest<unknown>("/v1/auth/logout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+    });
+  },
 };

@@ -1,5 +1,18 @@
 export type ApiSuccess<T> = { ok: true; data: T };
-export type ApiEnvelope<T> = { data: T; request_id?: string };
+export type ApiEnvelope<T> = {
+  data: T;
+  request_id?: string;
+  page?: number;
+  page_size?: number;
+  total?: number;
+};
+export type ApiPage<T> = {
+  data: T[];
+  page: number;
+  page_size: number;
+  total: number;
+  request_id: string | null;
+};
 export type ApiErrorBody = {
   ok: false;
   error: {
@@ -21,6 +34,39 @@ export class ApiClientError extends Error {
   }
 }
 
+const thaiErrorMessageByCode: Record<string, string> = {
+  AUTH_REQUIRED: "กรุณาเข้าสู่ระบบก่อนดำเนินการ",
+  INVALID_CREDENTIALS: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+  ACCOUNT_DISABLED: "บัญชีนี้ถูกปิดการใช้งาน",
+  ACCOUNT_LOCKED: "บัญชีถูกล็อกชั่วคราว โปรดลองใหม่ภายหลัง",
+  FORBIDDEN_SCOPE: "คุณไม่มีสิทธิ์ดำเนินการนี้",
+  ORIGIN_NOT_ALLOWED: "ไม่อนุญาตให้ส่งคำขอจากหน้านี้",
+  RESOURCE_NOT_FOUND: "ไม่พบข้อมูลที่ต้องการ",
+  STATE_CONFLICT: "ไม่สามารถดำเนินการได้ เนื่องจากสถานะข้อมูลปัจจุบันไม่รองรับ",
+  VALIDATION_ERROR: "ข้อมูลที่กรอกไม่ถูกต้องหรือไม่ครบถ้วน",
+  MALFORMED_REQUEST: "รูปแบบคำขอไม่ถูกต้อง",
+  JSON_CONTENT_TYPE_REQUIRED: "รูปแบบข้อมูลที่ส่งไม่ถูกต้อง",
+  DUPLICATE_CODE: "รหัสนี้ถูกใช้งานแล้ว",
+  DUPLICATE_IDENTITY: "ข้อมูลระบุตัวตนของพนักงานนี้ถูกใช้งานแล้ว",
+  DUPLICATE_USERNAME: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว",
+  EMPLOYEE_ACCOUNT_ALREADY_EXISTS: "พนักงานนี้มีบัญชีผู้ใช้อยู่แล้ว",
+  DUPLICATE_ROLE_GRANT: "มีการกำหนดบทบาทนี้อยู่แล้ว",
+  INVALID_ROLE_SCOPE: "ขอบเขตบทบาทไม่ถูกต้อง",
+  INVALID_ORGANIZATION_RELATION: "ขอบเขตหน่วยงานไม่ถูกต้อง",
+  EFFECTIVE_DATE_OVERLAP: "ช่วงวันที่มีข้อมูลเดิมทับซ้อนอยู่",
+  PAYROLL_PERIOD_LOCKED: "รอบเงินเดือนถูกล็อกแล้ว จึงแก้ไขไม่ได้",
+  PAYROLL_PERIOD_NOT_FOUND: "ไม่พบรอบเงินเดือน",
+  PAYROLL_ATTENDANCE_INCOMPLETE: "ข้อมูลการลงเวลาของรอบเงินเดือนยังไม่ครบ",
+  PAYROLL_APPROVALS_PENDING: "ยังมีรายการรออนุมัติในรอบเงินเดือนนี้",
+  PAYROLL_NEGATIVE_NET_PAY: "ไม่สามารถดำเนินการได้ เนื่องจากเงินสุทธิจะติดลบ",
+  INTERNAL_ERROR: "ระบบเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+};
+
+const localizeApiError = (code: string, fallback: string) =>
+  /[฀-๿]/.test(fallback)
+    ? fallback
+    : thaiErrorMessageByCode[code] ?? "ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง";
+
 type RequestOptions = RequestInit & {
   baseUrl?: string;
   fetcher?: typeof fetch;
@@ -36,21 +82,30 @@ const isErrorBody = (value: unknown): value is ApiErrorBody =>
   typeof value.error.code === "string" &&
   typeof value.error.message === "string";
 
-const isErrorEnvelope = (value: unknown): value is { error: ApiErrorBody["error"] } =>
-  isRecord(value) && isRecord(value.error) &&
-  typeof value.error.code === "string" && typeof value.error.message === "string";
+const isErrorEnvelope = (
+  value: unknown,
+): value is { error: ApiErrorBody["error"] } =>
+  isRecord(value) &&
+  isRecord(value.error) &&
+  typeof value.error.code === "string" &&
+  typeof value.error.message === "string";
 
 const isSuccessBody = <T>(value: unknown): value is ApiSuccess<T> =>
   isRecord(value) && value.ok === true && "data" in value;
 
 const isEnvelopeBody = <T>(value: unknown): value is ApiEnvelope<T> =>
-  isRecord(value) && "data" in value &&
-  typeof value.request_id === "string";
+  isRecord(value) && "data" in value && typeof value.request_id === "string";
 
 export async function apiRequestEnvelope<T>(
   path: string,
   { baseUrl = "/api", fetcher = fetch, ...init }: RequestOptions = {},
-): Promise<{ data: T; requestId: string | null }> {
+): Promise<{
+  data: T;
+  requestId: string | null;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+}> {
   let response: Response;
 
   try {
@@ -77,15 +132,24 @@ export async function apiRequestEnvelope<T>(
     );
   }
 
-  if (response.ok && isSuccessBody<T>(body)) return { data: body.data, requestId: null };
+  if (response.ok && isSuccessBody<T>(body))
+    return { data: body.data, requestId: null };
   if (response.ok && isEnvelopeBody<T>(body)) {
-    return { data: body.data, requestId: body.request_id ?? null };
+    return {
+      data: body.data,
+      requestId: body.request_id ?? null,
+      ...(typeof body.page === "number" &&
+      typeof body.page_size === "number" &&
+      typeof body.total === "number"
+        ? { page: body.page, pageSize: body.page_size, total: body.total }
+        : {}),
+    };
   }
 
   if (isErrorBody(body) || isErrorEnvelope(body)) {
     throw new ApiClientError(
       body.error.code,
-      body.error.message,
+      localizeApiError(body.error.code, body.error.message),
       response.status,
       body.error.details,
     );
@@ -98,6 +162,35 @@ export async function apiRequestEnvelope<T>(
   );
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   return (await apiRequestEnvelope<T>(path, options)).data;
+}
+
+export async function apiRequestPage<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<ApiPage<T>> {
+  const result = await apiRequestEnvelope<T[]>(path, options);
+  if (
+    !Array.isArray(result.data) ||
+    result.page === undefined ||
+    result.pageSize === undefined ||
+    result.total === undefined
+  ) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "ระบบตอบกลับในรูปแบบที่ไม่ถูกต้อง",
+      200,
+    );
+  }
+  return {
+    data: result.data,
+    page: result.page,
+    page_size: result.pageSize,
+    total: result.total,
+    request_id: result.requestId,
+  };
 }
