@@ -13,6 +13,7 @@ describe("dashboard route access policy", () => {
     expect(routePolicyFor("/settings").roles).toEqual(["OWNER"]);
     expect(routePolicyFor("/accounts/42").roles).toEqual(["OWNER", "HR"]);
     expect(routePolicyFor("/organization").roles).toEqual(["OWNER", "HR"]);
+    expect(routePolicyFor("/audit").roles).toEqual(["OWNER", "HR"]);
 
     expect(routePolicyFor("/attendance").roles).toEqual(["OWNER", "HR", "BRANCH_MANAGER", "SUPERVISOR"]);
     expect(routePolicyFor("/finance").roles).toEqual(["OWNER", "HR"]);
@@ -37,6 +38,8 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/payslips", ["HR"])).toBe(true);
     expect(canAccessDashboardPath("/payslips", ["OWNER"])).toBe(true);
     expect(canAccessDashboardPath("/reports", ["EMPLOYEE"])).toBe(false);
+    expect(canAccessDashboardPath("/audit", ["HR"])).toBe(true);
+    expect(canAccessDashboardPath("/audit", ["BRANCH_MANAGER"])).toBe(false);
     expect(canAccessDashboardPath("/leave", ["EMPLOYEE"])).toBe(true);
     expect(canAccessDashboardPath("/finance", ["EMPLOYEE"])).toBe(false);
     expect(canAccessDashboardPath("/attendance", ["EMPLOYEE"])).toBe(false);

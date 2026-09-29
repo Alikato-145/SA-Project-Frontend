@@ -103,6 +103,24 @@ describe("apiRequest", () => {
     });
   });
 
+  test("preserves nested pagination metadata from stable response DTOs", async () => {
+    await expect(
+      apiRequestPage<{ id: string }>("/v1/audit-logs/", {
+        fetcher: fetcher({
+          data: [{ id: "9" }],
+          meta: { pagination: { page: 3, page_size: 20, total: 44, total_pages: 3 } },
+          request_id: "audit-request",
+        }),
+      }),
+    ).resolves.toEqual({
+      data: [{ id: "9" }],
+      page: 3,
+      page_size: 20,
+      total: 44,
+      request_id: "audit-request",
+    });
+  });
+
   test("rejects a list response without pagination metadata", async () => {
     await expect(
       apiRequestPage("/v1/employees", {

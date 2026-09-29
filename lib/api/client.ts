@@ -5,6 +5,13 @@ export type ApiEnvelope<T> = {
   page?: number;
   page_size?: number;
   total?: number;
+  meta?: {
+    pagination?: {
+      page?: number;
+      page_size?: number;
+      total?: number;
+    };
+  };
 };
 export type ApiPage<T> = {
   data: T[];
@@ -135,13 +142,19 @@ export async function apiRequestEnvelope<T>(
   if (response.ok && isSuccessBody<T>(body))
     return { data: body.data, requestId: null };
   if (response.ok && isEnvelopeBody<T>(body)) {
+    const nestedPagination = isRecord(body.meta) && isRecord(body.meta.pagination)
+      ? body.meta.pagination
+      : null;
+    const page = typeof body.page === "number" ? body.page : nestedPagination?.page;
+    const pageSize = typeof body.page_size === "number" ? body.page_size : nestedPagination?.page_size;
+    const total = typeof body.total === "number" ? body.total : nestedPagination?.total;
     return {
       data: body.data,
       requestId: body.request_id ?? null,
-      ...(typeof body.page === "number" &&
-      typeof body.page_size === "number" &&
-      typeof body.total === "number"
-        ? { page: body.page, pageSize: body.page_size, total: body.total }
+      ...(typeof page === "number" &&
+      typeof pageSize === "number" &&
+      typeof total === "number"
+        ? { page, pageSize, total }
         : {}),
     };
   }

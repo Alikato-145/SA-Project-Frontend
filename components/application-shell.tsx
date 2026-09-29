@@ -19,6 +19,7 @@ const navigation = [
   { label: "การตั้งค่า", href: "/settings" },
   { label: "สลิปเงินเดือน", href: "/payslips" },
   { label: "รายงาน", href: "/reports" },
+  { label: "ประวัติการเปลี่ยนแปลง", href: "/audit" },
 ] as const;
 
 function NavigationItems({ roleCodes }: { roleCodes: readonly string[] }) {

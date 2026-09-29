@@ -41,6 +41,8 @@ export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
     };
   if (pathname === "/reports")
     return { known: true, roles: ["OWNER", "HR"], state: "released" };
+  if (pathname === "/audit")
+    return { known: true, roles: ["OWNER", "HR"], state: "released" };
   if (pathname === "/settings")
     return { known: true, roles: ["OWNER"], state: "released" };
   if (pathname === "/accounts" || pathname.startsWith("/accounts/"))
