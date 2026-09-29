@@ -6,8 +6,8 @@ import { Feedback, PageHeader, StatusBadge, formatThaiDate } from "@/components/
 import { authApi } from "@/lib/auth/auth-api";
 import { operationsApi } from "@/lib/operations/operations-api";
 
-type Leave = { id: number; employeeId: number; originalLeaveTypeId: number; finalLeaveTypeId: number | null; startDate: string; endDate: string; requestedDays: string; status: string; reason: string | null; isRetroactive: boolean };
-type LeaveType = { id: number; nameTh: string; requiresDocument: boolean };
+type Leave = { id: string; employeeId: string; originalLeaveTypeId: string; finalLeaveTypeId: string | null; startDate: string; endDate: string; requestedDays: string; status: string; reason: string | null; isRetroactive: boolean };
+type LeaveType = { id: string; nameTh: string; requiresDocument: boolean };
 const field = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2";
 const primary = "rounded-lg bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50";
 const api = operationsApi.request;
@@ -22,7 +22,7 @@ export default function LeavePage() {
   const [canSelectEmployee, setCanSelectEmployee] = useState(false);
   const [ownEmployeeName, setOwnEmployeeName] = useState("");
   const [authReady, setAuthReady] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,31 +57,31 @@ export default function LeavePage() {
     setBusy(true); setError(""); setMessage("");
     const form = new FormData(event.currentTarget);
     try {
-      await api("/leave-requests", { method: "POST", body: JSON.stringify({ employee_id: Number(employeeId), leave_type_id: Number(form.get("leave_type_id")), start_date: form.get("start_date"), end_date: form.get("end_date"), reason: form.get("reason"), is_retroactive: form.get("is_retroactive") === "on" }) });
+      await api("/leave-requests", { method: "POST", body: JSON.stringify({ employee_id: employeeId, leave_type_id: String(form.get("leave_type_id")), start_date: form.get("start_date"), end_date: form.get("end_date"), reason: form.get("reason"), is_retroactive: form.get("is_retroactive") === "on" }) });
       setMessage("ส่งคำขอลาแล้ว"); await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถส่งคำขอลาได้"); }
     finally { setBusy(false); }
   };
-  const decide = async (id: number, action: "approve" | "reject", form: FormData) => {
+  const decide = async (id: string, action: "approve" | "reject", form: FormData) => {
     setBusy(true); setError(""); setMessage("");
     try {
       const finalType = String(form.get("final_leave_type_id") ?? "");
-      await api(`/leave-requests/${id}/${action}`, { method: "POST", body: JSON.stringify(action === "approve" ? { ...(finalType ? { final_leave_type_id: Number(finalType) } : {}) } : { remark: String(form.get("remark") ?? "") }) });
+      await api(`/leave-requests/${id}/${action}`, { method: "POST", body: JSON.stringify(action === "approve" ? { ...(finalType ? { final_leave_type_id: finalType } : {}) } : { remark: String(form.get("remark") ?? "") }) });
       setMessage(action === "approve" ? "อนุมัติคำขอลาแล้ว" : "ไม่อนุมัติคำขอลาแล้ว"); await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถดำเนินการคำขอลาได้"); }
     finally { setBusy(false); }
   };
-  const update = async (id: number, event: React.FormEvent<HTMLFormElement>) => {
+  const update = async (id: string, event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true); setError(""); setMessage("");
     const form = new FormData(event.currentTarget);
     try {
-      await api(`/leave-requests/${id}`, { method: "PATCH", body: JSON.stringify({ leave_type_id: Number(form.get("leave_type_id")), start_date: form.get("start_date"), end_date: form.get("end_date"), reason: form.get("reason"), is_retroactive: form.get("is_retroactive") === "on" }) });
+      await api(`/leave-requests/${id}`, { method: "PATCH", body: JSON.stringify({ leave_type_id: String(form.get("leave_type_id")), start_date: form.get("start_date"), end_date: form.get("end_date"), reason: form.get("reason"), is_retroactive: form.get("is_retroactive") === "on" }) });
       setEditingId(null); setMessage("แก้ไขคำขอลาแล้ว"); await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถแก้ไขคำขอลาได้"); }
     finally { setBusy(false); }
   };
-  const leaveTypeName = (id: number) => leaveTypes.find((type) => type.id === id)?.nameTh ?? "ไม่ระบุประเภท";
+  const leaveTypeName = (id: string) => leaveTypes.find((type) => type.id === id)?.nameTh ?? "ไม่ระบุประเภท";
 
   return <div className="space-y-8">
     <PageHeader title="การลา" description="ส่งคำขอลา ตรวจสอบผล และแก้ไขได้เฉพาะคำขอที่ยังรอพิจารณา" />

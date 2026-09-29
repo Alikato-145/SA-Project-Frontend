@@ -7,7 +7,7 @@ import { Feedback, PageHeader, StatusBadge, formatThaiDate, thaiLabel } from "@/
 import { authApi } from "@/lib/auth/auth-api";
 import { operationsApi } from "@/lib/operations/operations-api";
 
-type Overtime = { id: number; employeeId: number; overtimeDate: string; overtimeType: "hourly" | "rest_day" | "public_holiday"; hours: string | null; dayUnits: string | null; reason: string | null; status: string };
+type Overtime = { id: string; employeeId: string; overtimeDate: string; overtimeType: "hourly" | "rest_day" | "public_holiday"; hours: string | null; dayUnits: string | null; reason: string | null; status: string };
 const field = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-[var(--ink)]";
 const api = operationsApi.request;
 const canManageOvertime = (roles: string[]) => roles.some((role) => ["SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"].includes(role));
@@ -51,16 +51,16 @@ export default function OvertimePage() {
     const form = new FormData(event.currentTarget);
     try {
       await api("/overtime-records", { method: "POST", body: JSON.stringify({
-        employee_id: Number(employeeId), overtime_date: form.get("overtime_date"), overtime_type: type,
+        employee_id: employeeId, overtime_date: form.get("overtime_date"), overtime_type: type,
         ...(type === "hourly" ? { hours: form.get("hours") } : { day_units: form.get("day_units") }),
-        work_day_record_id: form.get("work_day_record_id") ? Number(form.get("work_day_record_id")) : undefined,
+        work_day_record_id: form.get("work_day_record_id") ? String(form.get("work_day_record_id")) : undefined,
         reason: form.get("reason"),
       }) });
       setMessage("ส่งคำขอ OT แล้ว รอผู้มีสิทธิ์พิจารณา"); await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถส่งคำขอ OT ได้"); }
     finally { setBusy(false); }
   };
-  const decide = async (id: number, action: "approve" | "reject", remark: string) => {
+  const decide = async (id: string, action: "approve" | "reject", remark: string) => {
     setBusy(true); setError(""); setMessage("");
     try {
       await api(`/overtime-records/${id}/${action}`, { method: "POST", body: JSON.stringify({ remark }) });

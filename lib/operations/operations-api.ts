@@ -8,15 +8,28 @@ export const operationsRequest = <T>(path: string, options: OperationOptions = {
     headers: { ...(options.body ? { "content-type": "application/json" } : {}), ...options.headers },
   });
 
-// C4's Thai workflow screens use the compatibility routes while B5 uses the
-// feature routes above. Both share the signed-in API client and error envelope.
+const camelCaseOperationData = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(camelCaseOperationData);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()),
+        camelCaseOperationData(item),
+      ]),
+    );
+  }
+  return value;
+};
+
+// C4's Thai workflow screens and B5 controls share the authenticated feature routes.
 export const operationsApi = {
-  request<T>(path: string, init: RequestInit = {}) {
-    return apiRequest<T>(`/v1/operations${path}`, {
+  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const data = await apiRequest<unknown>(`/v1${path}`, {
       ...init,
       credentials: "same-origin",
       headers: { "content-type": "application/json", ...init.headers },
     });
+    return camelCaseOperationData(data) as T;
   },
 };
 export const operationError = (cause: unknown) => {

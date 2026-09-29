@@ -6,7 +6,7 @@ import { Feedback, PageHeader, StatusBadge, formatThaiDate, thaiLabel } from "@/
 import { operationsApi } from "@/lib/operations/operations-api";
 
 type WorkDay = {
-  id: number; employeeId: number; branchId: number; workDate: string;
+  id: string; employeeId: string; branchId: string; workDate: string;
   status: string; clockInAt: string | null; clockOutAt: string | null;
   lateMinutes: number; isDeductible: boolean; entrySource: string;
 };
@@ -30,7 +30,7 @@ export default function AttendancePage() {
     if (!employeeId || !startDate || !endDate) { setError("เลือกพนักงานและช่วงวันที่ก่อนโหลดข้อมูล"); return; }
     setLoading(true); setError(""); setRecords([]);
     try {
-      const query = new URLSearchParams({ employeeId, startDate, endDate });
+      const query = new URLSearchParams({ employee_id: employeeId, start_date: startDate, end_date: endDate });
       setRecords(await api<WorkDay[]>(`/work-day-records?${query}`));
     } catch (cause) { setError(cause instanceof Error ? cause.message : "ไม่สามารถโหลดข้อมูลการลงเวลาทำงานได้"); }
     finally { setLoading(false); }
@@ -42,16 +42,16 @@ export default function AttendancePage() {
     const form = new FormData(event.currentTarget);
     try {
       const payload = correction ? {
-        status: form.get("status"), lateMinutes: number(form.get("lateMinutes")),
-        isDeductible: form.get("isDeductible") === "on", note: String(form.get("note") ?? ""),
+        status: form.get("status"), late_minutes: number(form.get("lateMinutes")),
+        is_deductible: form.get("isDeductible") === "on", note: String(form.get("note") ?? ""),
       } : {
-        employeeId: Number(employeeId), branchId: number(form.get("branchId")),
-        workDate: form.get("workDate"), status: form.get("status"),
-        clockInAt: dateTime(form.get("clockInAt")), clockOutAt: dateTime(form.get("clockOutAt")),
-        lateMinutes: number(form.get("lateMinutes")), isDeductible: form.get("isDeductible") === "on",
+        employee_id: employeeId, branch_id: String(form.get("branchId")),
+        work_date: form.get("workDate"), status: form.get("status"),
+        clock_in_at: dateTime(form.get("clockInAt")), clock_out_at: dateTime(form.get("clockOutAt")),
+        late_minutes: number(form.get("lateMinutes")), is_deductible: form.get("isDeductible") === "on",
         note: String(form.get("note") ?? ""),
       };
-      const path = correction ? `/work-day-records/${number(form.get("recordId"))}` : "/work-day-records";
+      const path = correction ? `/work-day-records/${String(form.get("recordId"))}` : "/work-day-records";
       await api(path, { method: correction ? "PATCH" : "POST", body: JSON.stringify(payload) });
       setMessage(correction ? "บันทึกการแก้ไขแล้ว" : "บันทึกวันทำงานแล้ว");
       await load();

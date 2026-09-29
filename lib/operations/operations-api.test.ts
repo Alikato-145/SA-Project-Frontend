@@ -29,19 +29,20 @@ describe("signed-in operations client", () => {
   });
 });
 
-test("compatibility operation requests retain the signed-in API envelope", async () => {
+test("Thai operation screens use canonical routes and map public snake_case DTOs", async () => {
   const originalFetch = globalThis.fetch;
   let url = "";
   let init: RequestInit | undefined;
   globalThis.fetch = ((input: string | URL | Request, request?: RequestInit) => {
     url = String(input);
     init = request;
-    return Promise.resolve(new Response(JSON.stringify({ data: [], request_id: "req-compat" })));
+    return Promise.resolve(new Response(JSON.stringify({ data: [{ id: "9007199254740993", employee_id: "4", work_date: "2026-09-29" }], request_id: "req-compat" })));
   }) as typeof fetch;
   try {
-    await operationsApi.request("/leave-requests?employee_id=4");
-    expect(url).toBe("/api/v1/operations/leave-requests?employee_id=4");
+    const rows = await operationsApi.request<Array<{ id: string; employeeId: string; workDate: string }>>("/leave-requests?employee_id=4");
+    expect(url).toBe("/api/v1/leave-requests?employee_id=4");
     expect(init?.credentials).toBe("same-origin");
+    expect(rows).toEqual([{ id: "9007199254740993", employeeId: "4", workDate: "2026-09-29" }]);
   } finally {
     globalThis.fetch = originalFetch;
   }
