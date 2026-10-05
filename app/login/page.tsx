@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "../../lib/api/client";
 import { authApi } from "../../lib/auth/auth-api";
+import { postLoginPathFor } from "../../lib/auth/route-access";
 import styles from "./login.module.css";
 
 const messageFor = (error: unknown) => {
@@ -33,8 +34,10 @@ export default function LoginPage() {
     setPending(true);
 
     try {
-      await authApi.login({ username, password });
-      router.replace("/payroll");
+      const actor = await authApi.login({ username, password });
+      router.replace(
+        postLoginPathFor(actor.grants.map((grant) => grant.role_code)),
+      );
     } catch (cause) {
       setError(messageFor(cause));
     } finally {
@@ -53,10 +56,10 @@ export default function LoginPage() {
                 <span className="text-lg font-semibold tracking-tight">Haris Payroll</span>
               </div>
               <h1 className="mt-8 max-w-lg text-balance text-[clamp(2rem,7vw,3rem)] font-semibold leading-[1.12] tracking-[-0.035em] sm:mt-10 lg:mt-16">
-                เข้าสู่พื้นที่ทำงานเงินเดือน
+                เข้าสู่พื้นที่ทำงานของคุณ
               </h1>
               <p className="mt-5 max-w-md text-sm leading-6 text-white/72 sm:text-base sm:leading-7">
-                ตรวจรายการรายวัน แก้ blocker และล็อกรอบเงินเดือนอย่างรอบคอบ
+                ระบบจะพาไปยังงานหลักที่ตรงกับบทบาทและสิทธิ์ของบัญชี
               </p>
             </div>
             <p className="mt-8 max-w-sm border-t border-white/15 pt-5 text-sm leading-6 text-white/62 sm:mt-10">
@@ -69,7 +72,7 @@ export default function LoginPage() {
           <div className={styles.formContent}>
             <h2 className="text-3xl font-semibold tracking-[-0.03em]">เข้าสู่ระบบ</h2>
             <p className="mt-3 leading-7 text-[var(--muted)]">
-              ใช้บัญชีที่ได้รับสิทธิ์เพื่อไปยังสมุดงานเงินเดือน
+              ใช้ชื่อผู้ใช้และรหัสผ่านที่ผู้ดูแลระบบจัดเตรียมให้
             </p>
 
             <form className="mt-7 space-y-5" onSubmit={submit}>

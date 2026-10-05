@@ -69,3 +69,23 @@ export const canAccessDashboardPath = (
   roleCodes.some((role) =>
     routePolicyFor(pathname).roles.includes(role as DashboardRole),
   );
+
+const postLoginDestinations: ReadonlyArray<
+  readonly [DashboardRole, string]
+> = [
+  ["OWNER", "/settings"],
+  ["HR", "/payroll"],
+  ["BRANCH_MANAGER", "/attendance"],
+  ["SUPERVISOR", "/attendance"],
+  ["EMPLOYEE", "/leave"],
+];
+
+export const postLoginPathFor = (roleCodes: readonly string[]) => {
+  const destination = postLoginDestinations.find(([role]) =>
+    roleCodes.includes(role),
+  )?.[1];
+
+  return destination && canAccessDashboardPath(destination, roleCodes)
+    ? destination
+    : "/dashboard";
+};

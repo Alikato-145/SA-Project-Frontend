@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { canAccessDashboardPath, routePolicyFor } from "./route-access";
+import {
+  canAccessDashboardPath,
+  postLoginPathFor,
+  routePolicyFor,
+} from "./route-access";
 
 describe("dashboard route access policy", () => {
   test("declares every current dashboard route family and fails closed", () => {
@@ -44,5 +48,22 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/finance", ["EMPLOYEE"])).toBe(false);
     expect(canAccessDashboardPath("/attendance", ["EMPLOYEE"])).toBe(false);
     expect(canAccessDashboardPath("/unlisted", ["OWNER"])).toBe(false);
+  });
+
+  test("sends each role to a permitted primary workspace after login", () => {
+    expect(postLoginPathFor(["EMPLOYEE"])).toBe("/leave");
+    expect(postLoginPathFor(["SUPERVISOR"])).toBe("/attendance");
+    expect(postLoginPathFor(["BRANCH_MANAGER"])).toBe("/attendance");
+    expect(postLoginPathFor(["HR"])).toBe("/payroll");
+    expect(postLoginPathFor(["OWNER"])).toBe("/settings");
+  });
+
+  test("uses the highest responsibility role and safely falls back", () => {
+    expect(postLoginPathFor(["EMPLOYEE", "SUPERVISOR"])).toBe(
+      "/attendance",
+    );
+    expect(postLoginPathFor(["HR", "OWNER"])).toBe("/settings");
+    expect(postLoginPathFor([])).toBe("/dashboard");
+    expect(postLoginPathFor(["UNKNOWN"])).toBe("/dashboard");
   });
 });
