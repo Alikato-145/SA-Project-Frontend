@@ -23,6 +23,36 @@ export interface AuthenticatedActor {
   capabilities: string[];
 }
 
+export type EmployeeContext =
+  | { mode: "management" }
+  | {
+      mode: "self";
+      employee: NonNullable<AuthenticatedAccount["employee"]>;
+    }
+  | { mode: "missing" };
+
+const employeeManagementRoles = new Set([
+  "SUPERVISOR",
+  "BRANCH_MANAGER",
+  "HR",
+  "OWNER",
+]);
+
+export const employeeContextFor = (
+  actor: AuthenticatedActor,
+): EmployeeContext => {
+  if (
+    actor.grants.some((grant) =>
+      employeeManagementRoles.has(grant.role_code),
+    )
+  )
+    return { mode: "management" };
+
+  return actor.account.employee
+    ? { mode: "self", employee: actor.account.employee }
+    : { mode: "missing" };
+};
+
 export const authApi = {
   login(input: { username: string; password: string }) {
     return apiRequest<AuthenticatedActor>("/v1/auth/login", {

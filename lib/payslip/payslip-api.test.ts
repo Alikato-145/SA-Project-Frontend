@@ -1,6 +1,21 @@
 import { expect, test } from "bun:test";
 import { payslipApi } from "./payslip-api";
 
+test("employee payslips use the own-only endpoint without an employee selector", async () => {
+  let call: { url: string; init?: RequestInit } | null = null;
+  const fetcher = ((url: string | URL | Request, init?: RequestInit) => {
+    call = { url: String(url), init };
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [], request_id: "req-mine" })),
+    );
+  }) as typeof fetch;
+
+  await payslipApi.mine({ baseUrl: "http://test/api", fetcher });
+
+  expect(call?.url).toBe("http://test/api/v1/payslips/mine");
+  expect(call?.init?.credentials).toBe("same-origin");
+});
+
 test("payslip mutations send JSON through the authenticated API boundary", async () => {
   const calls: { url: string; init?: RequestInit }[] = [];
   const fetcher = ((url: string | URL | Request, init?: RequestInit) => {

@@ -50,6 +50,21 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/unlisted", ["OWNER"])).toBe(false);
   });
 
+  test("keeps employee self-service routes while hiding management workspaces", () => {
+    for (const pathname of ["/employees", "/leave", "/overtime", "/payslips"])
+      expect(canAccessDashboardPath(pathname, ["EMPLOYEE"])).toBe(true);
+
+    for (const pathname of [
+      "/accounts",
+      "/attendance",
+      "/finance",
+      "/payroll",
+      "/reports",
+      "/settings",
+    ])
+      expect(canAccessDashboardPath(pathname, ["EMPLOYEE"])).toBe(false);
+  });
+
   test("sends each role to a permitted primary workspace after login", () => {
     expect(postLoginPathFor(["EMPLOYEE"])).toBe("/leave");
     expect(postLoginPathFor(["SUPERVISOR"])).toBe("/attendance");

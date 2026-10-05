@@ -1,5 +1,8 @@
 import { apiRequest, ApiClientError } from "../api/client";
-import type { AuthenticatedActor } from "../auth/auth-api";
+import {
+  employeeContextFor,
+  type AuthenticatedActor,
+} from "../auth/auth-api";
 
 export type OperationOptions = RequestInit & { fetcher?: typeof fetch; baseUrl?: string };
 export const operationsRequest = <T>(path: string, options: OperationOptions = {}) =>
@@ -40,7 +43,9 @@ export const operationError = (cause: unknown) => {
 export const operationPermissions = (actor: AuthenticatedActor | null) => {
   const roles = actor?.grants.map((grant) => grant.role_code) ?? [];
   const canFinance = roles.some((role) => ["HR", "OWNER"].includes(role));
-  const canManage = canFinance || roles.some((role) => ["SUPERVISOR", "BRANCH_MANAGER"].includes(role));
+  const canManage = actor
+    ? employeeContextFor(actor).mode === "management"
+    : false;
   return { canManage, canApprove: canManage, canFinance, selfOnly: !canManage };
 };
 export type DecisionHistory = { id: string; actor_user_account_id: string; action: string; acted_at: string; remark: string | null;
