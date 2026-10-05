@@ -185,9 +185,9 @@ export default function EmployeesPage() {
                 detail="ลองเปลี่ยนคำค้นหรือสถานะ"
               />
             ) : (
-              <ul className={styles.grid} aria-label="รายชื่อพนักงาน">
+              <ul className={styles.recordList} aria-label="รายชื่อพนักงาน">
                 {rows.map((employee) => (
-                  <li className={styles.span6} key={employee.id}>
+                  <li key={employee.id}>
                     <article className={styles.panel}>
                       <div className={styles.sectionHead}>
                         <div>
@@ -207,8 +207,8 @@ export default function EmployeesPage() {
                         </StatusBadge>
                       </div>
                       <p className={styles.muted}>
-                        สาขา #{employee.branch_id ?? "–"} · แผนก #
-                        {employee.department_id ?? "–"}
+                        สาขา #{employee.branch_id ?? "ไม่ระบุ"} · แผนก #
+                        {employee.department_id ?? "ไม่ระบุ"}
                       </p>
                     </article>
                   </li>

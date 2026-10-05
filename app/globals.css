@@ -53,10 +53,14 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: ui-sans-serif, "Noto Sans Thai", Tahoma, Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 a, button, summary { -webkit-tap-highlight-color: transparent; }
+button, summary { cursor: pointer; }
 button, input, select, textarea { font: inherit; }
 button, input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 44px; }
+summary { min-height: 44px; }
 input, select, textarea { color: var(--ink); }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--muted) 82%, white); opacity: 1; }
 button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; }
@@ -65,6 +69,105 @@ button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: no
   outline-offset: 3px;
 }
 ::selection { background: var(--accent-soft); }
+
+.workspace-section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: clamp(1rem, 2.2vw, 1.5rem);
+}
+
+.workspace-filter {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface));
+  padding: clamp(1rem, 2.2vw, 1.25rem);
+}
+
+.workspace-control {
+  margin-top: 0.375rem;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, var(--ink));
+  border-radius: calc(var(--radius) * 0.8);
+  background: var(--surface);
+  padding: 0.625rem 0.75rem;
+  color: var(--ink);
+}
+
+.workspace-control:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+}
+
+.workspace-control:focus-visible {
+  border-color: var(--accent);
+}
+
+.workspace-primary,
+.workspace-secondary,
+.workspace-danger {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius) * 0.8);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 100ms ease;
+}
+
+.workspace-primary {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+}
+
+.workspace-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 86%, black);
+}
+
+.workspace-secondary {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.workspace-secondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: var(--paper);
+}
+
+.workspace-danger {
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
+  background: var(--surface);
+  color: var(--danger);
+}
+
+.workspace-primary:active:not(:disabled),
+.workspace-secondary:active:not(:disabled),
+.workspace-danger:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.workspace-primary:disabled,
+.workspace-secondary:disabled,
+.workspace-danger:disabled {
+  opacity: 0.5;
+}
+
+.workspace-records {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.workspace-record {
+  padding: 1rem 0;
+}
+
+.workspace-record + .workspace-record {
+  border-top: 1px solid var(--line);
+}
 
 .skip-link {
   position: fixed;

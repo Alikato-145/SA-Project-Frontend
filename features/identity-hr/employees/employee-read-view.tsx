@@ -207,7 +207,7 @@ export function EmployeeReadView({
                       <div>
                         <dt>ช่วงวันที่</dt>
                         <dd>
-                          {item.effective_from} –{" "}
+                          {item.effective_from} ถึง{" "}
                           {item.effective_to ?? "ปัจจุบัน"}
                         </dd>
                       </div>
@@ -263,7 +263,7 @@ export function EmployeeReadView({
                       )}
                     </div>
                     <p className={styles.muted}>
-                      {item.effective_from} – {item.effective_to ?? "ปัจจุบัน"}
+                      {item.effective_from} ถึง {item.effective_to ?? "ปัจจุบัน"}
                     </p>
                   </li>
                 ))}

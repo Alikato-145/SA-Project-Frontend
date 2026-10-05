@@ -331,7 +331,7 @@ export function OrganizationLive() {
                           ? (parents.find(
                               (parentItem) => parentItem.id === item.parent_id,
                             )?.name ?? item.parent_id)
-                          : "—"}
+                          : "ไม่ระบุ"}
                       </td>
                       <td>
                         <StatusBadge tone={item.is_active ? "ok" : "danger"}>

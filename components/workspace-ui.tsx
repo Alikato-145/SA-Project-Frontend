@@ -45,10 +45,10 @@ export const formatThaiMoney = (value: string | number | null | undefined) =>
 
 export function PageHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line)] pb-6 sm:pb-7">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line)] pb-5">
       <div className="max-w-2xl">
-        <h1 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{title}</h1>
-        <p className="mt-3 leading-7 text-[var(--muted)]">{description}</p>
+        <h1 className="text-2xl font-semibold tracking-[-0.025em] text-balance sm:text-3xl">{title}</h1>
+        <p className="mt-2 max-w-[68ch] leading-7 text-[var(--muted)]">{description}</p>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
@@ -65,7 +65,7 @@ export function Feedback({ kind, title, detail }: { kind: FeedbackKind; title?: 
     final: "border-[var(--line)] bg-[var(--accent-soft)] text-[var(--ink)]",
   }[kind];
   return (
-    <Alert className={cn("px-4 py-3", styles)} role={kind === "error" ? "alert" : "status"} aria-live="polite">
+    <Alert className={cn("rounded-md px-4 py-3", styles)} role={kind === "error" ? "alert" : "status"} aria-live="polite">
       {title ? <AlertTitle>{title}</AlertTitle> : null}
       <AlertDescription className="text-current">{detail}</AlertDescription>
     </Alert>

@@ -17,10 +17,6 @@ export function PreviewFrame({
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
-          <div className={styles.stamp}>
-            <strong>ข้อมูลบุคลากร</strong>
-            <p>ข้อมูลที่แสดงเป็นไปตามสิทธิ์ของบัญชีที่เข้าสู่ระบบ</p>
-          </div>
         </section>
         {children}
       </div>

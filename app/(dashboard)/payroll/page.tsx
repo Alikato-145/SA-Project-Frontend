@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/components/workspace-ui";
 import { ApiClientError } from "../../../lib/api/client";
 import { payrollApi, type PayrollConfiguration, type PayrollPeriod, type PayrollPreview, type PayrollRecord } from "../../../lib/payroll/payroll-api";
 import { authApi } from "../../../lib/auth/auth-api";
 import { organizationApi, type Branch, type Shop } from "../../../lib/organization/organization-api";
 
-const field = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm";
-const button = "rounded-lg bg-[var(--ink)] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45";
-const quietButton = "rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-45";
+const field = "workspace-control";
+const button = "workspace-primary";
+const quietButton = "workspace-secondary";
 const money = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatMoney = (value: string) => money.format(Number(value));
 const messageFor = (cause: unknown) => cause instanceof ApiClientError
@@ -133,24 +134,22 @@ export default function PayrollPage() {
     void run(() => payrollApi.getRecord(selected.id, row.id!), setRecord);
   };
 
-  if (!accessChecked) return <div className="h-32 animate-pulse rounded-xl bg-[var(--line)]" />;
-  if (unavailableRole) return <section className="max-w-xl border border-[var(--line)] bg-[var(--surface)] p-6"><h1 className="text-2xl font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</h1><p className="mt-3 leading-7 text-[var(--muted)]">{roleCodes.includes("SUPERVISOR") ? "Supervisor ใช้งาน Attendance และ Leave approval ตามแผนกเมื่อ workflow นั้นเชื่อมเสร็จ" : "Employee ใช้งาน self-service และ payslip เมื่อ feature นั้นพร้อม"}</p></section>;
+  if (!accessChecked) return <div className="h-32 animate-pulse rounded-lg bg-[var(--line)]" />;
+  if (unavailableRole) return <section className="workspace-section max-w-xl"><h1 className="text-2xl font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</h1><p className="mt-3 leading-7 text-[var(--muted)]">{roleCodes.includes("SUPERVISOR") ? "Supervisor ใช้งาน Attendance และ Leave approval ตามแผนกเมื่อ workflow นั้นเชื่อมเสร็จ" : "Employee ใช้งาน self-service และ payslip เมื่อ feature นั้นพร้อม"}</p></section>;
 
-  return <div className="space-y-8">
-    <header className="border-b border-[var(--line)] pb-7">
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div><p className="text-sm font-semibold text-[var(--accent)]">รอบจ่ายและหลักฐานการคำนวณ</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">สมุดงานเงินเดือน</h1><p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">ตรวจรายการรายวัน แก้ blocker แล้วจึงล็อกรอบ ข้อมูลที่ล็อกแล้วแก้ผ่าน adjustment เท่านั้น</p></div>
-        <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} className="flex w-full items-end gap-2 sm:w-auto">
+  return <div className="space-y-7">
+    <div>
+      <PageHeader title="สมุดงานเงินเดือน" description="ตรวจรายการรายวัน แก้ blocker แล้วจึงล็อกรอบ ข้อมูลที่ล็อกแล้วแก้ผ่าน adjustment เท่านั้น" />
+      <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} className="workspace-filter mt-5 flex w-full flex-wrap items-end gap-3">
           <label className="min-w-0 flex-1 text-sm sm:w-60">ร้าน<select className={field} value={shopId} onChange={(event) => setShopId(event.target.value)} required><option value="">เลือกร้าน</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.code} · {shop.name}</option>)}</select></label>
           <button className={button} disabled={loading || !shopId}>{loading ? "กำลังโหลด…" : "เปิดสมุดงาน"}</button>
-        </form>
-      </div>
+      </form>
       {requestId && <p className="mt-3 text-xs text-[var(--muted)]">Request ID: {requestId}</p>}
-    </header>
+    </div>
 
     {notice && <p role="status" className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
     {error && <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{error}</p>}
-    {canMutate === false && <p className="border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">โหมดอ่านอย่างเดียว: Branch Manager ดูข้อมูลตามสาขาที่ได้รับสิทธิ์ แต่สร้าง คำนวณ หรือล็อกรอบไม่ได้</p>}
+    {canMutate === false && <p className="border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--ink)]">โหมดอ่านอย่างเดียว: Branch Manager ดูข้อมูลตามสาขาที่ได้รับสิทธิ์ แต่สร้าง คำนวณ หรือล็อกรอบไม่ได้</p>}
 
     {canMutate !== false && <section className="grid gap-px overflow-hidden border border-[var(--line)] bg-[var(--line)] lg:grid-cols-2">
       <details className="bg-[var(--surface)] p-5" open><summary className="cursor-pointer font-semibold">เพิ่มค่าคำนวณแบบ effective-dated</summary>
@@ -172,7 +171,7 @@ export default function PayrollPage() {
     <section className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside><h2 className="font-semibold">รอบเงินเดือน</h2><div className="mt-3 border-y border-[var(--line)]">
         {periods.length === 0 && <p className="py-5 text-sm text-[var(--muted)]">ยังไม่มีรอบ กด “เปิดสมุดงาน” หรือสร้างรอบใหม่</p>}
-        {periods.map((period) => <button key={period.id} onClick={() => { setSelected(period); setPreview(null); setRecord(null); }} className={`flex w-full items-center justify-between border-b border-[var(--line)] px-2 py-4 text-left text-sm last:border-0 ${selected?.id === period.id ? "bg-[var(--accent-soft)]" : "bg-transparent"}`}><span><strong className="block">{period.period_month.toString().padStart(2, "0")}/{period.period_year}</strong><span className="text-[var(--muted)]">{period.start_date} – {period.end_date}</span></span><span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs">{periodStatusLabels[period.status] ?? period.status}</span></button>)}
+        {periods.map((period) => <button key={period.id} onClick={() => { setSelected(period); setPreview(null); setRecord(null); }} className={`flex w-full items-center justify-between border-b border-[var(--line)] px-2 py-4 text-left text-sm last:border-0 ${selected?.id === period.id ? "bg-[var(--accent-soft)]" : "bg-transparent"}`}><span><strong className="block">{period.period_month.toString().padStart(2, "0")}/{period.period_year}</strong><span className="text-[var(--muted)]">{period.start_date} ถึง {period.end_date}</span></span><span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs">{periodStatusLabels[period.status] ?? period.status}</span></button>)}
       </div></aside>
 
       <div className="min-w-0 space-y-6">
@@ -190,6 +189,6 @@ export default function PayrollPage() {
 
     {canMutate !== false && <section className="grid gap-6 border-t border-[var(--line)] pt-7 lg:grid-cols-[1fr_1.3fr]"><div><h2 className="text-xl font-semibold">Adjustment หลังล็อกรอบ</h2><p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">ไม่แก้รายการเดิม ระบุ payroll record ที่ล็อกแล้วและรอบถัดไปที่จะนำส่วนต่างไปใช้</p></div><form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void run(() => payrollApi.requestAdjustment({ original_payroll_record_id: String(form.get("record_id")), applied_payroll_period_id: String(form.get("target_period_id")), direction: String(form.get("direction")) as "earning" | "deduction", amount: String(form.get("amount")), reason: String(form.get("reason")) }), () => undefined, "ส่ง adjustment เพื่ออนุมัติแล้ว"); }} className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Locked record ID<input className={field} name="record_id" inputMode="numeric" required /></label><label className="text-sm">Target period ID<input className={field} name="target_period_id" inputMode="numeric" required /></label><label className="text-sm">ทิศทาง<select className={field} name="direction"><option value="earning">เพิ่มรายได้</option><option value="deduction">เพิ่มรายการหัก</option></select></label><label className="text-sm">จำนวนเงิน<input className={field} name="amount" inputMode="decimal" required /></label><label className="text-sm sm:col-span-2">เหตุผล<input className={field} name="reason" required maxLength={1000} /></label><button className={`${button} sm:col-span-2 sm:justify-self-start`} disabled={busy}>ส่ง Adjustment</button></form></section>}
 
-    <details className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ความพร้อมของค่าคำนวณ ({configurations.length})</summary><div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]"><div className="bg-[var(--accent-soft)] p-4 text-sm"><strong className="block">ก่อน preview/lock</strong><p className="mt-2 leading-6">{missingConfigurationKeys.length ? `ยังขาด ${missingConfigurationKeys.map(configurationLabel).join(" · ")}` : "มีค่าหลักครบแล้ว — ตรวจ effective date ให้ครอบคลุมงวดที่เลือก"}</p>{shops.length === 0 ? <Link href="/settings" className="mt-3 inline-block font-semibold underline underline-offset-4">ไปเพิ่มร้าน</Link> : null}</div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? `สาขา ${row.branch_id}` : "ทั้งร้าน"}</td><td>{row.numeric_value} {unitLabel(row.unit)}</td><td>{row.effective_from}</td></tr>)}</tbody></table></div></div></details>
+    <details className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ความพร้อมของค่าคำนวณ ({configurations.length})</summary><div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]"><div className="bg-[var(--accent-soft)] p-4 text-sm"><strong className="block">ก่อน preview/lock</strong><p className="mt-2 leading-6">{missingConfigurationKeys.length ? `ยังขาด ${missingConfigurationKeys.map(configurationLabel).join(" · ")}` : "มีค่าหลักครบแล้ว ตรวจ effective date ให้ครอบคลุมงวดที่เลือก"}</p>{shops.length === 0 ? <Link href="/settings" className="mt-3 inline-block font-semibold underline underline-offset-4">ไปเพิ่มร้าน</Link> : null}</div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? `สาขา ${row.branch_id}` : "ทั้งร้าน"}</td><td>{row.numeric_value} {unitLabel(row.unit)}</td><td>{row.effective_from}</td></tr>)}</tbody></table></div></div></details>
   </div>;
 }

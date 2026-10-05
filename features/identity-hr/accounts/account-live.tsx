@@ -393,8 +393,8 @@ export function AccountDetailLive({ accountId }: { accountId: string }) {
                   <tr key={grant.id}>
                     <td>{roles[grant.role_code]}</td>
                     <td>{scopes[grant.scope]}</td>
-                    <td>{grant.branch_id ?? "—"}</td>
-                    <td>{grant.department_id ?? "—"}</td>
+                    <td>{grant.branch_id ?? "ไม่ระบุ"}</td>
+                    <td>{grant.department_id ?? "ไม่ระบุ"}</td>
                     <td>
                       <button
                         className={styles.buttonSecondary}

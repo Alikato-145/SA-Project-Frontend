@@ -187,7 +187,7 @@ export function OnboardingForm() {
     }
     if (draft.account && !usernamePattern.test(draft.username)) {
       setError(
-        "ชื่อผู้ใช้ต้องมี 3–100 ตัวอักษร ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่าง",
+        "ชื่อผู้ใช้ต้องมี 3-100 ตัวอักษร ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่าง",
       );
       return;
     }

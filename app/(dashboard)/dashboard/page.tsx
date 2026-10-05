@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const [roles, setRoles] = useState<string[] | null>(null);
   useEffect(() => { void authApi.current().then((actor) => setRoles(actor.grants.map((grant) => grant.role_code))).catch(() => setRoles([])); }, []);
   const availableWorkspaces = roles === null ? [] : workspaces.filter((workspace) => canAccessDashboardPath(workspace.href, roles));
-  return <div className="space-y-8">
+  return <div className="space-y-7">
     <PageHeader title="พื้นที่ทำงาน" description="เลือกงานจากเมนูด้านซ้าย ระบบจะแสดงเฉพาะงานที่บัญชีของคุณมีสิทธิ์ใช้งาน" />
     <section aria-labelledby="start-heading">
       <h2 id="start-heading" className="text-xl font-semibold">เริ่มงานประจำวัน</h2>

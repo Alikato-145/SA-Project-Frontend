@@ -6,7 +6,7 @@ import { Feedback, PageHeader } from "@/components/workspace-ui";
 import { ApiClientError, type ApiPage } from "@/lib/api/client";
 import { auditApi, type AuditFilters, type AuditLog } from "@/lib/audit/audit-api";
 
-const field = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm";
+const field = "workspace-control";
 const tokenPattern = "[A-Za-z0-9][A-Za-z0-9._:-]*";
 
 const messageFor = (cause: unknown) => cause instanceof ApiClientError
@@ -89,13 +89,13 @@ export default function AuditPage() {
   const totalPages = result ? Math.max(1, Math.ceil(result.total / result.page_size)) : 1;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <PageHeader
         title="ประวัติการเปลี่ยนแปลง"
-        description="ตรวจสอบผู้ดำเนินการ เวลา รายการที่ได้รับผล และข้อมูลก่อน–หลัง โดยระบบแสดงเฉพาะข้อมูลที่ผ่านการปกปิดข้อมูลลับแล้ว"
+        description="ตรวจสอบผู้ดำเนินการ เวลา รายการที่ได้รับผล และข้อมูลก่อนกับหลัง โดยระบบแสดงเฉพาะข้อมูลที่ผ่านการปกปิดข้อมูลลับแล้ว"
       />
 
-      <form onSubmit={submit} className="space-y-4 border-y border-[var(--line)] py-5">
+      <form onSubmit={submit} className="workspace-filter space-y-4">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <label className="text-sm">การดำเนินการ<input className={field} name="action" pattern={tokenPattern} placeholder="เช่น employee.update.succeeded…" autoComplete="off" spellCheck={false} /></label>
           <label className="text-sm">ตารางข้อมูล<input className={field} name="table_name" pattern={tokenPattern} placeholder="เช่น employees…" autoComplete="off" spellCheck={false} /></label>
@@ -140,7 +140,7 @@ export default function AuditPage() {
                     <td className="px-3 py-4 tabular-nums">{row.actor_account_id ? `#${row.actor_account_id}` : "ระบบ"}</td>
                     <td className="px-3 py-4 font-mono text-xs" translate="no">{row.action}</td>
                     <td className="px-3 py-4"><span className="font-medium" translate="no">{row.table_name}</span><span className="block text-xs text-[var(--muted)]" translate="no">#{row.record_id}</span></td>
-                    <td className="max-w-64 px-3 py-4"><span className="block">{row.reason ?? "—"}</span><span className="mt-1 block break-all font-mono text-xs text-[var(--muted)]" translate="no">{row.request_id ?? "ไม่มี Request ID"}</span></td>
+                    <td className="max-w-64 px-3 py-4"><span className="block">{row.reason ?? "ไม่ระบุ"}</span><span className="mt-1 block break-all font-mono text-xs text-[var(--muted)]" translate="no">{row.request_id ?? "ไม่มี Request ID"}</span></td>
                     <td className="space-y-2 px-3 py-4"><Snapshot label="ข้อมูลเดิม" value={row.old_data} /><Snapshot label="ข้อมูลใหม่" value={row.new_data} /></td>
                   </tr>
                 ))}

@@ -30,7 +30,7 @@ export function DashboardAccessGuard({
   if (!checked)
     return (
       <div className="min-h-[100dvh] bg-[var(--paper)] p-8">
-        <div className="mx-auto h-32 max-w-6xl animate-pulse rounded-xl bg-[var(--line)]" />
+        <div className="mx-auto h-32 max-w-6xl animate-pulse rounded-lg bg-[var(--line)]" />
       </div>
     );
   if (!actor) return null;

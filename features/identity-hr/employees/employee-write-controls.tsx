@@ -198,7 +198,7 @@ export function EmployeeWriteControls({
     const data = new FormData(form);
     const number = field(data, "account_number");
     if (!/^\d{6,34}$/.test(number.replace(/[ -]/g, ""))) {
-      setError("เลขบัญชีต้องมีตัวเลข 6–34 หลัก");
+      setError("เลขบัญชีต้องมีตัวเลข 6-34 หลัก");
       return;
     }
     const input = {

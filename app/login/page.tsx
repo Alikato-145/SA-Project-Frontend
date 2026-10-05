@@ -25,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -91,20 +92,31 @@ export default function LoginPage() {
                 />
               </label>
 
-              <label className="block text-sm font-semibold" htmlFor="password">
-                รหัสผ่าน
-                <input
-                  autoComplete="current-password"
-                  className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3.5 py-3 text-base outline-none transition focus:border-[var(--accent)]"
-                  disabled={pending}
-                  id="password"
-                  name="password"
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  type="password"
-                  value={password}
-                />
-              </label>
+              <div>
+                <label className="block text-sm font-semibold" htmlFor="password">รหัสผ่าน</label>
+                <div className="relative mt-2">
+                  <input
+                    autoComplete="current-password"
+                    className="w-full rounded-lg border border-[var(--line)] bg-white px-3.5 py-3 pr-20 text-base outline-none transition focus:border-[var(--accent)]"
+                    disabled={pending}
+                    id="password"
+                    name="password"
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                  />
+                  <button
+                    aria-pressed={showPassword}
+                    className="absolute inset-y-0 right-0 min-h-11 px-3 text-sm font-semibold text-[var(--accent)]"
+                    disabled={pending}
+                    onClick={() => setShowPassword((value) => !value)}
+                    type="button"
+                  >
+                    {showPassword ? "ซ่อน" : "แสดง"}
+                  </button>
+                </div>
+              </div>
 
               {error ? (
                 <p className="border border-red-200 bg-red-50 px-3.5 py-3 text-sm leading-6 text-red-900" role="alert">
@@ -113,7 +125,7 @@ export default function LoginPage() {
               ) : null}
 
               <button
-                className="w-full rounded-lg bg-[var(--accent)] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1d5e49] disabled:cursor-not-allowed disabled:opacity-60"
+                className="workspace-primary w-full py-3.5"
                 disabled={pending}
                 type="submit"
               >

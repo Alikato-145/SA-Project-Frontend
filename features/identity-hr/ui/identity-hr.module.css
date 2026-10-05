@@ -1,22 +1,12 @@
 .scope {
-  --ink: #17201d;
-  --green: #1f6b52;
-  --green-dark: #174d3d;
-  --turmeric: #d7a443;
-  --rice: #f7f3e8;
-  --paper: #fffdf7;
-  --line: #d9d4c6;
-  --muted: #66736d;
-  --danger: #c94b3c;
-  min-height: 100vh;
+  min-height: 0;
   color: var(--ink);
-  background: var(--rice);
-  font-family: Tahoma, "Noto Sans Thai", Arial, sans-serif;
+  background: transparent;
 }
 .frame {
-  width: min(1180px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 28px 0 64px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 .masthead {
   display: flex;
@@ -40,7 +30,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   font-weight: 800;
 }
@@ -64,36 +54,52 @@
   border-radius: 7px;
 }
 .nav a:hover {
-  background: #e6ecdf;
+  background: var(--accent-soft);
 }
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.7fr);
-  gap: 28px;
-  align-items: end;
-  margin: 32px 0;
+  display: block;
+  margin: 0 0 2rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1.25rem;
 }
 .hero h1 {
-  font-size: 2.5rem;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  max-width: 15ch;
+  font-size: clamp(1.5rem, 4vw, 1.875rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  max-width: none;
   margin: 0;
 }
 .hero p {
   color: var(--muted);
-  line-height: 1.7;
-  max-width: 58ch;
-}
-.stamp {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
+  line-height: 1.75;
+  max-width: 68ch;
+  margin-bottom: 0;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 16px;
+}
+.recordList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.recordList > li + li {
+  border-top: 1px solid var(--line);
+}
+.recordList .panel {
+  border: 0;
+  border-radius: 0;
+  padding: 1rem 0;
+}
+.recordList .sectionHead {
+  margin-bottom: 0.5rem;
 }
 .span8 {
   grid-column: span 8;
@@ -109,11 +115,10 @@
 }
 .panel {
   min-width: 0;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 20px;
-  box-shadow: 0 8px 24px rgba(23, 32, 29, 0.05);
 }
 .panel h2,
 .panel h3 {
@@ -124,11 +129,16 @@
   align-items: end;
   justify-content: space-between;
   gap: 16px;
-  margin: 28px 0 14px;
+  margin: 0 0 1.25rem;
 }
 .sectionHead h1,
 .sectionHead h2 {
   margin: 0;
+}
+.sectionHead h1 {
+  font-size: clamp(1.5rem, 4vw, 1.875rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
 }
 .muted {
   color: var(--muted);
@@ -138,6 +148,10 @@
   gap: 10px;
   flex-wrap: wrap;
   align-items: end;
+  margin: 1rem 0;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface));
+  padding: 1rem;
 }
 .field {
   display: grid;
@@ -145,16 +159,16 @@
   min-width: 0;
 }
 .field label {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.88rem;
 }
 .input,
 .select,
 .textarea {
   width: 100%;
-  border: 1px solid #aeb8b2;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, var(--ink));
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   padding: 10px 12px;
   color: var(--ink);
   font: inherit;
@@ -169,17 +183,17 @@
 .button:focus-visible,
 .nav a:focus-visible,
 .tabs a:focus-visible {
-  outline: 3px solid rgba(215, 164, 67, 0.55);
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, white);
   outline-offset: 2px;
 }
 .button {
   border: 0;
   border-radius: 8px;
   padding: 10px 15px;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   font: inherit;
-  font-weight: 700;
+  font-weight: 650;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
@@ -188,12 +202,15 @@
   gap: 7px;
 }
 .button:hover {
-  background: var(--green-dark);
+  background: color-mix(in srgb, var(--accent) 86%, black);
 }
 .buttonSecondary {
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--line);
+}
+.buttonSecondary:hover {
+  background: var(--paper);
 }
 .buttonDanger {
   background: var(--danger);
@@ -210,8 +227,8 @@
   padding: 4px 9px;
   font-size: 0.78rem;
   font-weight: 700;
-  background: #e7eee9;
-  color: var(--green-dark);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .statusWarn {
   background: #faefd6;
@@ -235,7 +252,7 @@
   text-align: left;
   color: var(--muted);
   font-size: 0.82rem;
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
   padding: 10px;
 }
 .table td {
@@ -244,7 +261,7 @@
   vertical-align: top;
 }
 .table a {
-  color: var(--green-dark);
+  color: var(--accent);
   font-weight: 700;
 }
 .tabs {
@@ -263,17 +280,17 @@
   border-bottom: 3px solid transparent;
 }
 .tabs a:hover {
-  border-color: var(--turmeric);
+  border-color: var(--accent);
 }
 .notice {
-  border: 1px solid var(--green);
-  background: #edf4ef;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: var(--accent-soft);
   padding: 14px 16px;
   border-radius: 6px;
   overflow-wrap: anywhere;
 }
 .noticeWarn {
-  border-color: var(--turmeric);
+  border-color: #d7a443;
   background: #fff7e6;
 }
 .noticeDanger {
@@ -298,8 +315,8 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 0 4px var(--rice);
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--paper);
 }
 .kv {
   display: grid;
@@ -331,7 +348,7 @@
   color: var(--muted);
 }
 .stepActive {
-  border-color: var(--turmeric);
+  border-color: var(--accent);
   color: var(--ink);
 }
 .formGrid {
@@ -355,11 +372,11 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(300px, 0.85fr) minmax(0, 1.15fr);
-  background: var(--rice);
+  background: var(--paper);
 }
 .loginAside {
   padding: clamp(30px, 6vw, 90px);
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -379,7 +396,7 @@
 }
 .loginCard {
   width: min(460px, 100%);
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--line);
   padding: clamp(22px, 5vw, 44px);
   border-radius: 14px;

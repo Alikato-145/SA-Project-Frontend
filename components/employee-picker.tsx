@@ -38,7 +38,7 @@ export function EmployeePicker({ value, onChange, className, required = false }:
         onChange(selected?.id ?? "");
       }} />
     <datalist id={listId}>{options.map((employee) => <option key={employee.id} value={label(employee)} />)}</datalist>
-    <p className="mt-1 text-xs text-slate-500" aria-live="polite">{loading ? "กำลังค้นหารายชื่อ…" : value ? "เลือกพนักงานแล้ว" : active && query && options.length === 0 ? "ไม่พบพนักงานที่ค้นหา" : "พิมพ์ชื่อจริงหรือรหัสพนักงาน แล้วเลือกจากรายการ"}</p>
+    <p className="mt-1.5 text-xs leading-5 text-[var(--muted)]" aria-live="polite">{loading ? "กำลังค้นหารายชื่อ…" : value ? "เลือกพนักงานแล้ว" : active && query && options.length === 0 ? "ไม่พบพนักงานที่ค้นหา" : "พิมพ์ชื่อจริงหรือรหัสพนักงาน แล้วเลือกจากรายการ"}</p>
   </div>;
 }
 
@@ -65,7 +65,7 @@ export function EmployeeContextPicker({
   if (context === null)
     return (
       <p
-        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+        className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
         role="alert"
       >
         ยังตรวจสอบข้อมูลพนักงานไม่ได้ กรุณาลองโหลดหน้าใหม่
@@ -90,20 +90,20 @@ export function EmployeeContextPicker({
 
   if (context.mode === "self")
     return (
-      <p className="text-sm font-medium">
-        {selfLabel}
-        <span className="mt-1 block rounded-lg border border-[var(--line)] bg-[var(--paper)] px-3 py-2 font-normal text-[var(--ink)]">
+      <div className="text-sm font-medium">
+        <p>{selfLabel}</p>
+        <p className="mt-1.5 border-l-2 border-[var(--accent)] bg-[var(--paper)] px-3 py-2.5 font-normal text-[var(--ink)]">
           {context.employee.display_name}
           <small className="ml-2 text-[var(--muted)]">
             {context.employee.employee_code}
           </small>
-        </span>
-      </p>
+        </p>
+      </div>
     );
 
   return (
     <div
-      className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+      className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
       role="status"
     >
       <strong className="block">บัญชียังไม่เชื่อมข้อมูลพนักงาน</strong>

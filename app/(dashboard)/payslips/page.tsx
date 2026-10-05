@@ -8,9 +8,9 @@ import { payslipApi, type Payslip, type PayslipDelivery } from "@/lib/payslip/pa
 import { Feedback, PageHeader, StatusBadge, formatThaiDate, formatThaiMoney } from "@/components/workspace-ui";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const field = "mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 text-sm";
-const button = "rounded-lg bg-[var(--ink)] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45";
-const quietButton = "rounded-lg border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45";
+const field = "workspace-control";
+const button = "workspace-primary";
+const quietButton = "workspace-secondary";
 const messageFor = (cause: unknown) => cause instanceof ApiClientError
   ? cause.message
   : cause instanceof Error ? cause.message : "ไม่สามารถทำรายการได้";
@@ -77,7 +77,7 @@ export default function PayslipsPage() {
   if (role === null) return error ? <Feedback kind="error" title="ไม่สามารถเปิดสลิปได้" detail={error} /> : <Skeleton className="h-32 w-full" />;
   if (role === "employee") return <div className="space-y-6"><PageHeader title="สลิปเงินเดือนของฉัน" description="แสดงเฉพาะสลิปที่เชื่อมกับบัญชีของคุณ" />{error ? <Feedback kind="error" title="ไม่สามารถเปิดสลิปได้" detail={error} /> : <EmployeePayslips rows={rows} />}</div>;
 
-  return <div className="space-y-8">
+  return <div className="space-y-7">
     <PageHeader title="ออกและจัดส่งสลิปเงินเดือน" description="สร้างได้เฉพาะรายการเงินเดือนที่ล็อกแล้ว การส่งและยกเลิกจะเก็บประวัติไว้ตรวจสอบได้เสมอ" />
     {notice ? <Feedback kind="success" detail={notice} /> : null}
     {error ? <Feedback kind="error" title="ทำรายการไม่สำเร็จ" detail={error} /> : null}
@@ -86,7 +86,7 @@ export default function PayslipsPage() {
       <form onSubmit={openPayslip} className="border-y border-[var(--line)] py-5"><h2 className="text-xl font-semibold">เปิดสลิปที่ออกแล้ว</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">ใช้ payslip ID เพื่อดูประวัติการส่ง หรือจัดการสลิปเดิม</p><div className="mt-5 flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-sm">Payslip ID<input className={field} name="payslip_id" inputMode="numeric" required /></label><button className={quietButton} disabled={busy}>เปิดสลิป</button></div></form>
     </section>
     {selected && <section aria-labelledby="selected-payslip" className="border-t border-[var(--line)] pt-7"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 id="selected-payslip" className="text-xl font-semibold">สลิป #{selected.id}</h2><p className="mt-1 text-sm text-[var(--muted)]">ออกเมื่อ {formatThaiDate(selected.generated_at)}</p></div><div className="flex items-center gap-2"><StatusBadge value={selected.status} />{selected.status === "generated" && <button className={quietButton} onClick={voidPayslip} disabled={busy}>ยกเลิกสลิป</button>}</div></div><PayslipSummary payslip={selected} />
-      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]"><form onSubmit={deliver} className="border border-[var(--line)] bg-[var(--surface)] p-5"><h3 className="font-semibold">บันทึกการส่งอีเมล</h3><p className="mt-2 text-sm leading-6 text-[var(--muted)]">ระบบจะบันทึกทุกครั้งเป็นประวัติแยกกัน</p><label className="mt-5 block text-sm">อีเมลผู้รับ<input className={field} name="recipient_email" type="email" required disabled={selected.status !== "generated"} /></label><button className={`mt-3 ${button}`} disabled={busy || selected.status !== "generated"}>บันทึกการส่ง</button></form>
+      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]"><form onSubmit={deliver} className="workspace-section"><h3 className="font-semibold">บันทึกการส่งอีเมล</h3><p className="mt-2 text-sm leading-6 text-[var(--muted)]">ระบบจะบันทึกทุกครั้งเป็นประวัติแยกกัน</p><label className="mt-5 block text-sm">อีเมลผู้รับ<input className={field} name="recipient_email" type="email" required disabled={selected.status !== "generated"} /></label><button className={`mt-3 ${button}`} disabled={busy || selected.status !== "generated"}>บันทึกการส่ง</button></form>
         <div><h3 className="font-semibold">ประวัติการส่ง ({deliveries.length})</h3>{deliveries.length === 0 ? <div className="mt-3"><Feedback kind="empty" detail="ยังไม่มีประวัติการส่ง" /></div> : <ul className="mt-3 divide-y divide-[var(--line)] border-y border-[var(--line)]">{deliveries.map((delivery) => <li key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><span><strong>{delivery.recipient_email}</strong><span className="ml-2 text-[var(--muted)]">{formatThaiDate(delivery.attempted_at)}</span></span><StatusBadge value={delivery.status} /></li>)}</ul>}</div>
       </div>
     </section>}
