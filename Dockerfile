@@ -12,6 +12,9 @@ COPY . .
 RUN node node_modules/next/dist/bin/next build
 
 FROM node:22-alpine AS runtime
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 
 ENV NODE_ENV=production
