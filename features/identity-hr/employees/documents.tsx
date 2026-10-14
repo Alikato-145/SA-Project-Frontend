@@ -1,9 +1,10 @@
 "use client";
 
+import { AttachmentPanel } from "@/components/attachment-panel";
 import { useEffect, useState } from "react";
 import { ApiClientError } from "@/lib/api/client";
 import type { EmployeeSummary } from "../contracts/types";
-import { EmployeeTabs, StatusBadge, styles } from "../ui/primitives";
+import { EmployeeTabs, styles } from "../ui/primitives";
 import { RequestState } from "../ui/request-states";
 import { employeeReadApi } from "./employee-read-api";
 
@@ -85,24 +86,9 @@ export function EmployeeDocuments({ employee }: { employee: EmployeeSummary }) {
           <h2 id="documents-heading">เอกสารของ {employee.first_name}</h2>
           <p className={styles.muted}>{employee.employee_code}</p>
         </div>
-        <StatusBadge tone="warn">ยังไม่เปิดใช้งาน</StatusBadge>
       </div>
       <EmployeeTabs id={employee.id} />
-      <div className={styles.grid}>
-        <div className={styles.span8}>
-          <RequestState
-            kind="empty"
-            title="การแนบเอกสารยังไม่เปิดใช้งาน"
-            detail="ขณะนี้ยังไม่สามารถเลือกไฟล์หรือบันทึกเอกสารได้"
-          />
-        </div>
-        <aside className={`${styles.panel} ${styles.span4}`}>
-          <h3>สถานะการใช้งาน</h3>
-          <p className={styles.muted}>
-            ติดต่อฝ่ายบุคคลหากต้องส่งเอกสารในระหว่างที่ระบบส่วนนี้ยังไม่พร้อมใช้งาน
-          </p>
-        </aside>
-      </div>
+      <AttachmentPanel path={`/v1/employees/${employee.id}/attachments`} />
     </section>
   );
 }

@@ -6,6 +6,8 @@ import { apiRequest, ApiClientError } from "@/lib/api/client";
 import type { AccountStatus, RoleGrant } from "../contracts/types";
 import { Field, StatusBadge, styles } from "../ui/primitives";
 import { RequestState } from "../ui/request-states";
+import { EmployeePicker } from "@/components/employee-picker";
+import { onboardingApi, type Choice } from "../onboarding/onboarding-api";
 
 type Account = {
   id: string;
@@ -257,6 +259,8 @@ export function AccountListLive() {
 }
 
 export function AccountDetailLive({ accountId }: { accountId: string }) {
+  const [linkedEmployeeId, setLinkedEmployeeId] = useState("");
+  const [linkReason, setLinkReason] = useState("");
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -496,7 +500,17 @@ export function AccountDetailLive({ accountId }: { accountId: string }) {
       </section>
       <section className={`${styles.panel} ${styles.span6}`}>
         <h2>เพิ่มบทบาท</h2>
+        {!detail.account.employee ? <form className={styles.formGrid} onSubmit={async (event) => {
+          event.preventDefault();
+          if (!linkedEmployeeId || !linkReason.trim()) { setNotice({ kind: "error", message: "เลือกพนักงานและระบุเหตุผลก่อนเชื่อมบัญชี" }); return; }
+          setBusy(true); setNotice(null);
+          try {
+            await apiRequest(`/v1/accounts/${accountId}/employee`, body({ employee_id: linkedEmployeeId, reason: linkReason.trim() }));
+            await load(); setNotice({ kind: "success", message: "เชื่อมพนักงานแล้ว เลือกบทบาทและขอบเขตต่อได้" });
+          } catch (cause) { setNotice(failure(cause)); } finally { setBusy(false); }
+        }}><Field label="พนักงานที่เชื่อมบัญชี"><EmployeePicker className={styles.input} value={linkedEmployeeId} onChange={setLinkedEmployeeId} required /></Field><Field label="เหตุผลที่เชื่อมบัญชี"><input className={styles.input} value={linkReason} onChange={(event) => setLinkReason(event.target.value)} required maxLength={500} /></Field><button className={styles.button} disabled={busy}>เชื่อมพนักงาน</button></form> : null}
         <RoleScopeForm
+          hasEmployee={Boolean(detail.account.employee)}
           onSubmit={async (input) => {
             setBusy(true);
             setNotice(null);
@@ -517,9 +531,10 @@ export function AccountDetailLive({ accountId }: { accountId: string }) {
   );
 }
 
-function RoleScopeForm({
+export function RoleScopeForm({
   onSubmit,
   busy,
+  hasEmployee = true,
 }: {
   onSubmit: (value: {
     role_code: RoleCode;
@@ -528,8 +543,11 @@ function RoleScopeForm({
     reason: string;
   }) => Promise<void>;
   busy: boolean;
+  hasEmployee?: boolean;
 }) {
   const [role, setRole] = useState<RoleCode>("EMPLOYEE");
+  const [shop, setShop] = useState("");
+  const [shops, setShops] = useState<Choice[]>([]);
   const [branch, setBranch] = useState("");
   const [department, setDepartment] = useState("");
   const [reason, setReason] = useState("");
@@ -539,21 +557,32 @@ function RoleScopeForm({
     { id: string; name: string }[]
   >([]);
   useEffect(() => {
-    apiRequest<{ id: string; name: string }[]>("/v1/branches?page_size=100")
-      .then(setBranches)
-      .catch(() => setBranches([]));
+    const controller = new AbortController();
+    void onboardingApi.shops(controller.signal).then(setShops).catch((cause) => {
+      if (!controller.signal.aborted) setError(`โหลดร้านไม่สำเร็จ: ${failure(cause).message}`);
+    });
+    return () => controller.abort();
   }, []);
+  useEffect(() => {
+    if (!shop) return;
+    const controller = new AbortController();
+    void onboardingApi.branches(shop, controller.signal).then(setBranches).catch((cause) => {
+      if (!controller.signal.aborted) setError(`โหลดสาขาไม่สำเร็จ: ${failure(cause).message}`);
+    });
+    return () => controller.abort();
+  }, [shop]);
   useEffect(() => {
     if (!branch) return;
     let current = true;
-    apiRequest<{ id: string; name: string }[]>(
-      `/v1/departments?page_size=100&branch_id=${branch}`,
-    )
+    onboardingApi.departments(branch)
       .then((items) => {
         if (current) setDepartments(items);
       })
-      .catch(() => {
-        if (current) setDepartments([]);
+      .catch((cause) => {
+        if (current) {
+          setDepartments([]);
+          setError(`โหลดรายการแผนกไม่สำเร็จ: ${failure(cause).message}`);
+        }
       });
     return () => {
       current = false;
@@ -580,6 +609,10 @@ function RoleScopeForm({
   };
   return (
     <form onSubmit={submit}>
+      {scope === "self" ? (
+        <p className={styles.muted}>บทบาทพนักงานใช้ข้อมูลของพนักงานที่เชื่อมกับบัญชี สาขากำหนดจากข้อมูลการจ้าง ไม่ต้องเลือกสาขาในสิทธิ์นี้</p>
+      ) : null}
+      {scope === "self" && !hasEmployee ? <p role="alert" className={styles.muted}>บัญชียังไม่เชื่อมพนักงาน ต้องเชื่อมทะเบียนพนักงานก่อนกำหนดบทบาทพนักงาน</p> : null}
       <div className={styles.formGrid}>
         <Field label="บทบาท">
           <select
@@ -603,6 +636,13 @@ function RoleScopeForm({
           <input className={styles.input} value={scopes[scope]} readOnly />
         </Field>
         {scope === "branch" || scope === "department" ? (
+          <Field label="ร้าน">
+            <select className={styles.select} value={shop} required onChange={(event) => {
+              setShop(event.target.value); setBranch(""); setDepartment(""); setBranches([]); setDepartments([]);
+            }}><option value="">เลือกร้าน</option>{shops.map((row) => <option key={row.id} value={row.id}>{row.code} · {row.name}</option>)}</select>
+          </Field>
+        ) : null}
+        {scope === "branch" || scope === "department" ? (
           <Field label="สาขา">
             <select
               className={styles.select}
@@ -613,7 +653,7 @@ function RoleScopeForm({
                 setDepartments([]);
               }}
             >
-              <option value="">เลือกสาขา</option>
+              <option value="">{branches.length ? "เลือกสาขา" : "ยังไม่มีสาขาให้เลือก"}</option>
               {branches.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -651,14 +691,14 @@ function RoleScopeForm({
       {error ? (
         <RequestState kind="error" title="ยังเพิ่มบทบาทไม่ได้" detail={error} />
       ) : null}
-      <button className={styles.button} type="submit" disabled={busy}>
+      <button className={styles.button} type="submit" disabled={busy || (scope === "self" && !hasEmployee)}>
         เพิ่มบทบาท
       </button>
     </form>
   );
 }
 
-export function AccountCreateLive() {
+export function AccountCreateLive({ onCreated }: { onCreated?: () => void } = {}) {
   const [username, setUsername] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -689,6 +729,7 @@ export function AccountCreateLive() {
         message:
           "สร้างบัญชีแล้ว โปรดกำหนดบทบาทและส่งรหัสผ่านชั่วคราวผ่านช่องทางที่ปลอดภัย",
       });
+      onCreated?.();
     } catch (error) {
       setNotice(failure(error));
     } finally {
@@ -709,13 +750,8 @@ export function AccountCreateLive() {
               required
             />
           </Field>
-          <Field label="รหัสพนักงาน" hint="เว้นว่างได้สำหรับบัญชีเจ้าของ">
-            <input
-              className={styles.input}
-              value={employeeId}
-              onChange={(event) => setEmployeeId(event.target.value)}
-              inputMode="numeric"
-            />
+          <Field label="พนักงานที่เชื่อมกับบัญชี" hint="เลือกชื่อพนักงานสำหรับบัญชีพนักงาน เว้นว่างสำหรับบัญชีส่วนกลาง">
+            <EmployeePicker className={styles.input} value={employeeId} onChange={setEmployeeId} />
           </Field>
         </div>
         <button

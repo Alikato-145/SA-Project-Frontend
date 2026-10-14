@@ -36,6 +36,15 @@ export function DashboardAccessGuard({
   if (!actor) return null;
   const policy = routePolicyFor(pathname);
   const roleCodes = actor.grants.map((grant) => grant.role_code);
+  if (roleCodes.length === 0) return (
+    <ApplicationShell roleCodes={[]} username={actor.account.username}>
+      <section className="workspace-section max-w-xl" aria-labelledby="account-not-ready">
+        <h1 id="account-not-ready" className="text-2xl font-semibold">บัญชีนี้ยังไม่ได้รับบทบาท</h1>
+        <p className="mt-3 leading-7 text-[var(--muted)]">บัญชี {actor.account.username} เข้าสู่ระบบได้แล้ว แต่ผู้ดูแลยังไม่ได้กำหนดสิทธิ์ กรุณาให้ HR หรือเจ้าของกำหนดบทบาทและขอบเขตในหน้าบัญชีผู้ใช้</p>
+        <p className="mt-3 leading-7 text-[var(--muted)]">ถ้าคุณเป็นพนักงาน บัญชีต้องเชื่อมกับทะเบียนพนักงานด้วย สาขาจะอิงข้อมูลการจ้าง ไม่ใช่ชื่อบัญชีเข้าสู่ระบบ</p>
+      </section>
+    </ApplicationShell>
+  );
   if (!canAccessDashboardPath(pathname, roleCodes)) {
     const unavailable = policy.state === "unavailable";
     return (

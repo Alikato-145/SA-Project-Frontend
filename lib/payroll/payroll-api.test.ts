@@ -5,7 +5,7 @@ import { payrollApi } from "./payroll-api";
 const calls: { url: string; init?: RequestInit }[] = [];
 const fetcher = ((url: string | URL | Request, init?: RequestInit) => {
   calls.push({ url: String(url), init });
-  return Promise.resolve(new Response(JSON.stringify({ data: { id: "20", net_pay: "12500.40" }, request_id: "payroll-req" }), { status: 200 }));
+  return Promise.resolve(new Response(JSON.stringify({ data: /configurations\?|periods\?|adjustments\?/.test(String(url)) ? [] : { id: "20", net_pay: "12500.40" }, request_id: "payroll-req" }), { status: 200 }));
 }) as typeof fetch;
 
 describe("payroll API", () => {

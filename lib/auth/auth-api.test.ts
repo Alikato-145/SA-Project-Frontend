@@ -70,3 +70,27 @@ test("logout uses the browser session and JSON request contract", async () => {
     expect(init?.credentials).toBe("include");
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("change password sends only the current and replacement passwords", async () => {
+  const originalFetch = globalThis.fetch;
+  let url = "";
+  let init: RequestInit | undefined;
+  globalThis.fetch = ((input: string | URL | Request, request?: RequestInit) => {
+    url = String(input);
+    init = request;
+    return Promise.resolve(new Response(JSON.stringify({ ok: true, data: { password_changed: true } }), { status: 200 }));
+  }) as typeof fetch;
+  try {
+    await authApi.changePassword({
+      current_password: "temporary-password",
+      new_password: "replacement-password",
+    });
+    expect(url).toBe("/api/v1/auth/change-password");
+    expect(init?.method).toBe("POST");
+    expect(init?.credentials).toBe("include");
+    expect(init?.body).toBe(JSON.stringify({
+      current_password: "temporary-password",
+      new_password: "replacement-password",
+    }));
+  } finally { globalThis.fetch = originalFetch; }
+});

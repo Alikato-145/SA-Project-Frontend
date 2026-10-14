@@ -44,7 +44,7 @@ export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
   if (pathname === "/audit")
     return { known: true, roles: ["OWNER", "HR"], state: "released" };
   if (pathname === "/settings")
-    return { known: true, roles: ["OWNER"], state: "released" };
+    return { known: true, roles: allRoles, state: "released" };
   if (pathname === "/accounts" || pathname.startsWith("/accounts/"))
     return { known: true, roles: ["OWNER", "HR"], state: "released" };
   if (pathname === "/organization")
@@ -55,10 +55,12 @@ export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
     return { known: true, roles: allRoles, state: "released" };
   if (pathname === "/attendance")
     return { known: true, roles: ["OWNER", "HR", "BRANCH_MANAGER", "SUPERVISOR"], state: "released" };
+  if (pathname === "/schedules")
+    return { known: true, roles: ["OWNER", "HR", "BRANCH_MANAGER"], state: "released" };
   if (pathname === "/leave" || pathname === "/overtime")
     return { known: true, roles: allRoles, state: "released" };
   if (pathname === "/finance")
-    return { known: true, roles: ["OWNER", "HR"], state: "released" };
+    return { known: true, roles: ["OWNER", "HR", "EMPLOYEE"], state: "released" };
   return unknown;
 };
 

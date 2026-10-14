@@ -18,8 +18,8 @@ describe("signed-in operations client", () => {
     expect(data).toEqual({ id, amount: "0.01" });
   });
   test("shows session, forbidden and business conflict reasons", () => {
-    expect(operationError(new ApiClientError("UNAUTHENTICATED", "internal", 401))).toContain("Sign in again");
-    expect(operationError(new ApiClientError("FORBIDDEN", "internal", 403))).toContain("permission");
+    expect(operationError(new ApiClientError("UNAUTHENTICATED", "internal", 401))).toContain("เข้าสู่ระบบใหม่");
+    expect(operationError(new ApiClientError("FORBIDDEN", "internal", 403))).toContain("ไม่มีสิทธิ์");
     expect(operationError(new ApiClientError("CONFLICT", "Payroll is locked", 409))).toBe("Payroll is locked");
   });
   test("presentation permissions fail closed and honor any trusted role", () => {

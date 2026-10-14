@@ -155,11 +155,11 @@ export const employeeReadApi = {
   },
 };
 
-function mutation(method: "POST" | "PATCH", body?: object) {
+function mutation(method: "POST" | "PATCH", body: object = {}) {
   return {
     method,
     credentials: "include" as const,
-    headers: body ? { "content-type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
   };
 }

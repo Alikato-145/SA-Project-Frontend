@@ -4,3 +4,10 @@ node_modules
 .git
 *.log
 coverage
+
+playwright-report
+test-results
+test-results-production
+playwright-report-production
+test-results-webkit
+playwright-report-webkit

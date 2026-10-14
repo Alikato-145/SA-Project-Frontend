@@ -260,6 +260,7 @@ export function OnboardingForm() {
           </p>
         ) : null}
         <div className={styles.actions}>
+          {result.account_id ? <Link className={styles.button} href={`/accounts/${result.account_id}`}>กำหนดบทบาทบัญชีที่สร้าง</Link> : null}
           <Link
             className={styles.button}
             href={`/employees/${result.employee.id}`}

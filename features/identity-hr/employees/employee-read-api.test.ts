@@ -1,6 +1,18 @@
 import { expect, test } from "bun:test";
 import { employeeReadApi } from "./employee-read-api";
 
+test("primary bank mutation retains the JSON contract even without payload fields", async () => {
+  const originalFetch = globalThis.fetch;
+  let captured: RequestInit | undefined;
+  globalThis.fetch = (async (_input, init) => { captured = init; return new Response(JSON.stringify({ data: {}, request_id: "bank-primary" }), { status: 200 }); }) as typeof fetch;
+  try {
+    await employeeReadApi.makePrimaryBankAccount("41", "9");
+    expect(captured?.method).toBe("POST");
+    expect(new Headers(captured?.headers).get("content-type")).toBe("application/json");
+    expect(captured?.body).toBe("{}");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("employee list keeps server pagination and scoped filters", async () => {
   const originalFetch = globalThis.fetch;
   let url = "";

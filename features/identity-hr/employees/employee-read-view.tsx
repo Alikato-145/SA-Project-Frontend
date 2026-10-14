@@ -12,6 +12,7 @@ import { EmployeeTabs, StatusBadge, styles } from "../ui/primitives";
 import { RequestState } from "../ui/request-states";
 import { employeeReadApi, type EmployeeAssignment } from "./employee-read-api";
 import { EmployeeProfile } from "./employee-profile";
+import { EmployeeProfileControls } from "./employee-profile-controls";
 import { EmployeeWriteControls } from "./employee-write-controls";
 
 type View = "profile" | "employment" | "bank" | "weekly-holidays";
@@ -164,7 +165,7 @@ export function EmployeeReadView({
             }
           />
         ) : view === "profile" ? (
-          <EmployeeProfile employee={state.employee} />
+          <><EmployeeProfile employee={state.employee} />{canManage && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
         ) : (
           <section aria-label={titles[view]}>
             <div className={styles.sectionHead}>

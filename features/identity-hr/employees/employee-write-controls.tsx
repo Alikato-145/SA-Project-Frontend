@@ -250,6 +250,8 @@ export function EmployeeWriteControls({
       new FormData(form),
       "replacement_bank_account_id",
     );
+    if (!replacement && activeBanks.find(item => item.id === deactivateBankId)?.is_primary &&
+      !window.confirm("ปิดบัญชีหลักโดยไม่มีบัญชีทดแทน? ระบบจะส่งออกไฟล์โอนเงินไม่ได้จนกว่าจะเพิ่มบัญชีหลักใหม่")) return;
     void run(
       () =>
         employeeReadApi.deactivateBankAccount(

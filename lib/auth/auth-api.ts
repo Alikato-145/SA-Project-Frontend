@@ -72,4 +72,12 @@ export const authApi = {
       credentials: "include",
     });
   },
+  changePassword(input: { current_password: string; new_password: string }) {
+    return apiRequest<{ password_changed: true }>("/v1/auth/change-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+      credentials: "include",
+    });
+  },
 };

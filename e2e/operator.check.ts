@@ -1,0 +1,31 @@
+import { readFile } from "node:fs/promises";
+import { test, expect } from "@playwright/test";
+
+test("stale pending SMTP attempt resolves through UI without a second email or mutable terminal history", async ({ page, baseURL }) => {
+  const path = process.env.PENDING_DELIVERY_FIXTURE_FILE;
+  if (!path) throw new Error("Prepare the disposable pending-delivery fixture first.");
+  const fixture = JSON.parse(await readFile(path, "utf8"));
+  const mailbox = "http://localhost:18025/api/v1/messages";
+  const before = (await (await page.request.get(mailbox)).json()).total;
+  await page.goto("/login");
+  await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("admin");
+  await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
+  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
+  await page.goto("/payslips");
+  await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(fixture.shop_id);
+  await page.getByRole("combobox", { name: "งวดเงินเดือน", exact: true }).selectOption(fixture.period_id);
+  await page.getByRole("combobox", { name: "พนักงาน", exact: true }).selectOption(fixture.record_id);
+  await page.getByRole("button", { name: "ออกหรือเปิดสลิป", exact: true }).click();
+  const attempt = page.getByRole("listitem").filter({ hasText: "resolution@example.test" });
+  await attempt.getByRole("combobox", { name: "ผลจากผู้ให้บริการ", exact: true }).selectOption("failed");
+  await attempt.getByLabel("เหตุผลและหลักฐานที่ตรวจสอบ", { exact: true }).fill("ตรวจสอบ mail sink แล้วไม่พบข้อความจาก attempt สังเคราะห์นี้");
+  await attempt.getByRole("button", { name: "บันทึกผลตรวจสอบ", exact: true }).click();
+  await expect(attempt.getByRole("button", { name: "บันทึกผลตรวจสอบ", exact: true })).toHaveCount(0);
+  const response = await page.request.get(`/api/v1/payslips/${fixture.payslip_id}/deliveries`);
+  const logs = (await response.json()).data;
+  expect(logs.find((row: { id: string }) => row.id === fixture.attempt_id).status).toBe("failed");
+  expect((await (await page.request.get(mailbox)).json()).total).toBe(before);
+  const repeated = await page.request.post(`/api/v1/payslips/${fixture.payslip_id}/deliveries/${fixture.attempt_id}/resolve`, { data: { outcome: "failed", reason: "ลองเปลี่ยน terminal attempt อีกครั้ง" }, headers: { origin: new URL(baseURL!).origin } });
+  expect(repeated.status()).toBe(409);
+});

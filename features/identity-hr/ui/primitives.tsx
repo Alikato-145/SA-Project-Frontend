@@ -27,11 +27,11 @@ export function Field({
   hint?: string;
 }) {
   return (
-    <div className={styles.field}>
-      <label>{label}</label>
+    <label className={styles.field}>
+      <span>{label}</span>
       {children}
       {hint ? <small className={styles.muted}>{hint}</small> : null}
-    </div>
+    </label>
   );
 }
 export function EmployeeTabs({ id }: { id: string }) {

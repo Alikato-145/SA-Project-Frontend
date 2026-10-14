@@ -7,7 +7,15 @@ export type FeedbackKind = "loading" | "empty" | "success" | "warning" | "error"
 
 const labels: Record<string, string> = {
   pending: "รอพิจารณา",
+  sent: "SMTP รับข้อความแล้ว",
+  failed: "ส่งไม่สำเร็จ",
+  applied: "นำไปคำนวณแล้ว",
+  calculated: "คำนวณแล้ว",
+  leave: "ลา",
   approved: "อนุมัติแล้ว",
+  submitted: "ยื่นคำขอ",
+  type_changed: "แก้ประเภทการลา",
+  overridden: "แก้คำขอ",
   rejected: "ไม่อนุมัติ",
   cancelled: "ยกเลิกแล้ว",
   locked: "ล็อกแล้ว",

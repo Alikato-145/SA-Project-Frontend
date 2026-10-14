@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClientError } from "../../lib/api/client";
 import { authApi } from "../../lib/auth/auth-api";
@@ -20,8 +20,12 @@ const messageFor = (error: unknown) => {
 
   return "ไม่สามารถเชื่อมต่อกับระบบได้ กรุณาลองใหม่อีกครั้ง";
 };
+const subscribe = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 export default function LoginPage() {
+  const ready = useSyncExternalStore(subscribe, clientReady, serverReady);
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -83,7 +87,7 @@ export default function LoginPage() {
                   autoComplete="username"
                   autoFocus
                   className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3.5 py-3 text-base outline-none transition focus:border-[var(--accent)]"
-                  disabled={pending}
+                  disabled={pending || !ready}
                   id="username"
                   name="username"
                   onChange={(event) => setUsername(event.target.value)}
@@ -98,7 +102,7 @@ export default function LoginPage() {
                   <input
                     autoComplete="current-password"
                     className="w-full rounded-lg border border-[var(--line)] bg-white px-3.5 py-3 pr-20 text-base outline-none transition focus:border-[var(--accent)]"
-                    disabled={pending}
+                    disabled={pending || !ready}
                     id="password"
                     name="password"
                     onChange={(event) => setPassword(event.target.value)}
@@ -109,7 +113,7 @@ export default function LoginPage() {
                   <button
                     aria-pressed={showPassword}
                     className="absolute inset-y-0 right-0 min-h-11 px-3 text-sm font-semibold text-[var(--accent)]"
-                    disabled={pending}
+                    disabled={pending || !ready}
                     onClick={() => setShowPassword((value) => !value)}
                     type="button"
                   >
@@ -126,7 +130,7 @@ export default function LoginPage() {
 
               <button
                 className="workspace-primary w-full py-3.5"
-                disabled={pending}
+                disabled={pending || !ready}
                 type="submit"
               >
                 {pending ? "กำลังตรวจสอบบัญชี…" : "เข้าสู่พื้นที่ทำงาน"}

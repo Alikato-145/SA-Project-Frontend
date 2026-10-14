@@ -1,0 +1,31 @@
+import { readFile } from "node:fs/promises";
+import { test, expect } from "@playwright/test";
+
+test("clean production TLS stack supports initial owner, secure session and organization persistence", async ({ page, context, baseURL }) => {
+  const passwordFile = process.env.PRODUCTION_OWNER_PASSWORD_FILE;
+  if (!passwordFile) throw new Error("PRODUCTION_OWNER_PASSWORD_FILE must contain the synthetic initial-owner password.");
+  const password = (await readFile(passwordFile, "utf8")).trim();
+  const health = await page.request.get("/api/health/ready");
+  expect(health.status()).toBe(200);
+  expect(health.headers()["x-content-type-options"]).toBe("nosniff");
+  await page.goto("/login");
+  await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("rehearsal_owner");
+  await page.getByLabel("รหัสผ่าน", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
+  const session = (await context.cookies()).find(cookie => cookie.httpOnly);
+  expect(session?.secure).toBe(true);
+  expect(session?.sameSite).toBe("Lax");
+  const current = await page.request.get("/api/v1/auth/me");
+  expect(current.status()).toBe(200);
+  expect((await current.json()).data.grants.some((grant: { role_code: string }) => grant.role_code === "OWNER")).toBe(true);
+  const code = `PROD_${Date.now().toString(36).toUpperCase()}`;
+  const shop = await page.request.post("/api/v1/shops", { data: { code, name: "ร้านซ้อม production" }, headers: { origin: new URL(baseURL!).origin } });
+  expect(shop.status()).toBe(200);
+  await page.goto("/organization");
+  await expect(page.getByText(code, { exact: false }).first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(code, { exact: false }).first()).toBeVisible();
+  const forbiddenOrigin = await page.request.post("/api/v1/shops", { data: { code: `${code}_DENIED`, name: "ห้ามสร้างจาก origin อื่น" }, headers: { origin: "https://untrusted.example" } });
+  expect(forbiddenOrigin.status()).toBe(403);
+});

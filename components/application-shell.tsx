@@ -11,6 +11,7 @@ const navigation = [
   { label: "งานประจำวัน", items: [
     { label: "ภาพรวม", href: "/dashboard" },
     { label: "ลงเวลา", href: "/attendance" },
+    { label: "ตารางเวลาและวันหยุด", href: "/schedules" },
     { label: "การลา", href: "/leave" },
     { label: "ทำงานล่วงเวลา", href: "/overtime" },
   ] },
@@ -62,9 +63,12 @@ function NavigationItems({ roleCodes }: { roleCodes: readonly string[] }) {
 export function ApplicationShell({ children, roleCodes = [], username }: { children: ReactNode; roleCodes?: readonly string[]; username?: string }) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const signOut = async () => {
-    setSigningOut(true);
-    try { await authApi.logout(); } finally { router.replace("/login"); }
+    setSigningOut(true); setLogoutError("");
+    try { await authApi.logout(); router.replace("/login"); }
+    catch { setLogoutError("ออกจากระบบไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองใหม่"); }
+    finally { setSigningOut(false); }
   };
   return (
     <div className="min-h-[100dvh] bg-[var(--paper)] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -102,8 +106,9 @@ export function ApplicationShell({ children, roleCodes = [], username }: { child
           </div>
           <details className="mt-3 lg:hidden">
             <summary className="cursor-pointer rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium">เมนูหลัก</summary>
-            <nav className="mt-2 max-h-[70dvh] overflow-y-auto rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3"><NavigationItems roleCodes={roleCodes} /></nav>
+            <nav className="mt-2 max-h-[70dvh] overflow-y-auto rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3"><NavigationItems roleCodes={roleCodes} /><button type="button" onClick={() => void signOut()} disabled={signingOut} className="mt-4 min-h-11 w-full border-t border-[var(--line)] text-left text-sm font-medium text-[var(--accent)] disabled:opacity-60">{signingOut ? "กำลังออกจากระบบ…" : "ออกจากระบบ"}</button></nav>
           </details>
+          {logoutError && <p role="alert" className="mt-3 text-sm text-red-800">{logoutError}</p>}
         </header>
         <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-6 lg:px-10 lg:py-9">{children}</main>
       </div>

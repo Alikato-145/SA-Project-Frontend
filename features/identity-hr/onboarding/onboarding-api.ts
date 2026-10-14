@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, apiRequestAll } from "@/lib/api/client";
 
 export type Choice = { id: string; code: string; name: string };
 export type BranchChoice = Choice & { shop_id: string };
@@ -48,19 +48,7 @@ export type OnboardingResult = {
   temporary_password?: string;
 };
 
-const PAGE_SIZE = 100;
-async function listAll<T>(path: string, signal?: AbortSignal): Promise<T[]> {
-  const rows: T[] = [];
-  for (let page = 1; ; page += 1) {
-    const separator = path.includes("?") ? "&" : "?";
-    const batch = await apiRequest<T[]>(
-      `${path}${separator}page=${page}&page_size=${PAGE_SIZE}`,
-      { credentials: "include", signal },
-    );
-    rows.push(...batch);
-    if (batch.length < PAGE_SIZE) return rows;
-  }
-}
+const listAll = <T>(path: string, signal?: AbortSignal) => apiRequestAll<T>(path, { credentials: "include", signal });
 
 export const onboardingApi = {
   shops: (signal?: AbortSignal) =>

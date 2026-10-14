@@ -36,9 +36,9 @@ export const operationsApi = {
   },
 };
 export const operationError = (cause: unknown) => {
-  if (cause instanceof ApiClientError && cause.status === 401) return "Your session has expired. Sign in again to continue; your entered values are preserved.";
-  if (cause instanceof ApiClientError && cause.status === 403) return "You do not have permission for this employee or action.";
-  return cause instanceof Error ? cause.message : "Could not complete the request.";
+  if (cause instanceof ApiClientError && cause.status === 401) return "หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่";
+  if (cause instanceof ApiClientError && cause.status === 403) return "คุณไม่มีสิทธิ์จัดการข้อมูลหรือทำรายการนี้";
+  return cause instanceof Error ? cause.message : "ทำรายการไม่สำเร็จ กรุณาลองใหม่";
 };
 export const operationPermissions = (actor: AuthenticatedActor | null) => {
   const roles = actor?.grants.map((grant) => grant.role_code) ?? [];
@@ -49,7 +49,7 @@ export const operationPermissions = (actor: AuthenticatedActor | null) => {
   return { canManage, canApprove: canManage, canFinance, selfOnly: !canManage };
 };
 export type DecisionHistory = { id: string; actor_user_account_id: string; action: string; acted_at: string; remark: string | null;
-  from_leave_type_id?: string | null; to_leave_type_id?: string | null };
+  actor_username?: string; from_leave_type_name?: string | null; to_leave_type_name?: string | null; from_leave_type_id?: string | null; to_leave_type_id?: string | null };
 export type LeaveType = { id: string; code: string; name: string; quota_type: string; is_deductible: boolean; allow_exceed: boolean; is_active: boolean };
 export type LeaveQuota = { id: string; leave_type_id: string; quota_year: number; entitled_days: string; used_days: string };
 export type BranchSchedule = { id: string; branch_id: string; work_start_time: string; standard_close_time: string;

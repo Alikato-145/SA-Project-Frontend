@@ -26,6 +26,7 @@ export type ApiErrorBody = {
     code: string;
     message: string;
     details?: Record<string, unknown>;
+    field_errors?: Record<string, readonly string[]>;
   };
 };
 
@@ -44,8 +45,11 @@ export class ApiClientError extends Error {
 const thaiErrorMessageByCode: Record<string, string> = {
   AUTH_REQUIRED: "กรุณาเข้าสู่ระบบก่อนดำเนินการ",
   INVALID_CREDENTIALS: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+  CURRENT_PASSWORD_INCORRECT: "รหัสผ่านปัจจุบันไม่ถูกต้อง",
+  PASSWORD_UNCHANGED: "รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านปัจจุบัน",
   ACCOUNT_DISABLED: "บัญชีนี้ถูกปิดการใช้งาน",
   ACCOUNT_LOCKED: "บัญชีถูกล็อกชั่วคราว โปรดลองใหม่ภายหลัง",
+  RATE_LIMITED: "มีการเข้าสู่ระบบถี่เกินไป โปรดรอสักครู่แล้วลองใหม่",
   FORBIDDEN_SCOPE: "คุณไม่มีสิทธิ์ดำเนินการนี้",
   ORIGIN_NOT_ALLOWED: "ไม่อนุญาตให้ส่งคำขอจากหน้านี้",
   RESOURCE_NOT_FOUND: "ไม่พบข้อมูลที่ต้องการ",
@@ -66,10 +70,11 @@ const thaiErrorMessageByCode: Record<string, string> = {
   PAYROLL_ATTENDANCE_INCOMPLETE: "ข้อมูลการลงเวลาของรอบเงินเดือนยังไม่ครบ",
   PAYROLL_APPROVALS_PENDING: "ยังมีรายการรออนุมัติในรอบเงินเดือนนี้",
   PAYROLL_NEGATIVE_NET_PAY: "ไม่สามารถดำเนินการได้ เนื่องจากเงินสุทธิจะติดลบ",
+  PAYROLL_CALCULATION_OUT_OF_RANGE: "ยอดคำนวณเกินช่วงที่รองรับ ตรวจฐานเงินเดือน จำนวนวันมาตรฐานและอัตราคำนวณ",
   INTERNAL_ERROR: "ระบบเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
 };
 
-const localizeApiError = (code: string, fallback: string) =>
+export const localizeApiError = (code: string, fallback: string) =>
   /[฀-๿]/.test(fallback)
     ? fallback
     : thaiErrorMessageByCode[code] ?? "ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง";
@@ -164,7 +169,7 @@ export async function apiRequestEnvelope<T>(
       body.error.code,
       localizeApiError(body.error.code, body.error.message),
       response.status,
-      body.error.details,
+      { ...body.error.details, ...(body.error.field_errors ? { field_errors: body.error.field_errors } : {}) },
     );
   }
 
@@ -181,6 +186,18 @@ export async function apiRequest<T>(
 ): Promise<T> {
   return (await apiRequestEnvelope<T>(path, options)).data;
 }
+
+export async function apiRequestAllEnvelope<T>(path: string, options: RequestOptions = {}) {
+  const data: T[] = [];
+  let requestId: string | null = null;
+  for (let page = 1; ; page += 1) {
+    const result = await apiRequestEnvelope<T[]>(`${path}${path.includes("?") ? "&" : "?"}page=${page}&page_size=100`, options);
+    if (!Array.isArray(result.data)) throw new ApiClientError("INVALID_RESPONSE", "ระบบตอบกลับในรูปแบบที่ไม่ถูกต้อง", 200);
+    data.push(...result.data); requestId = result.requestId;
+    if (result.data.length < 100) return { data, requestId };
+  }
+}
+export async function apiRequestAll<T>(path: string, options: RequestOptions = {}) { return (await apiRequestAllEnvelope<T>(path, options)).data; }
 
 export async function apiRequestPage<T>(
   path: string,

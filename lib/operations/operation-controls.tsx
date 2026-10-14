@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { formatThaiDate, thaiLabel } from "@/components/workspace-ui";
+import { onboardingApi, type Choice } from "@/features/identity-hr/onboarding/onboarding-api";
 import { operationsRequest as api, operationError, type ApplicableSchedule, type BranchSchedule, type Holiday, type DecisionHistory } from "./operations-api";
 
-const field = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2";
-const button = "rounded-lg bg-slate-900 px-4 py-2 text-white disabled:opacity-50";
+const field = "workspace-control";
+const button = "workspace-primary";
 const text = (form: FormData, name: string) => String(form.get(name) ?? "");
 
 export function DecisionHistoryView({ path }: { path: string }) {
@@ -18,13 +20,15 @@ export function DecisionHistoryView({ path }: { path: string }) {
     catch (cause) { setError(operationError(cause)); }
     finally { setBusy(false); }
   };
-  return <div className="mt-3 text-sm"><button className="underline disabled:opacity-50" type="button" disabled={busy} onClick={() => void load()}>{busy ? "Loading history…" : "Review decision history"}</button>
+  return <div className="mt-3 text-sm"><button className="underline disabled:opacity-50" type="button" disabled={busy} onClick={() => void load()}>{busy ? "กำลังโหลดประวัติ…" : "ดูประวัติการพิจารณา"}</button>
     {error && <p role="alert">{error}</p>}
-    {history && <ul className="mt-2 space-y-1">{history.length === 0 && <li>No decisions recorded.</li>}{history.map((item) => <li key={item.id}>{item.acted_at} · {item.action} · Account {item.actor_user_account_id}{item.to_leave_type_id && ` · Type ${item.from_leave_type_id ?? "—"} → ${item.to_leave_type_id}`}{item.remark && ` · ${item.remark}`}</li>)}</ul>}
+    {history && <ul className="mt-2 space-y-1">{history.length === 0 && <li>ยังไม่มีการพิจารณา</li>}{history.map((item) => <li key={item.id}>{formatThaiDate(item.acted_at)} {new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", timeStyle: "short" }).format(new Date(item.acted_at))} · {thaiLabel(item.action)} · บัญชี {item.actor_username ?? item.actor_user_account_id}{item.to_leave_type_id && ` · ประเภท ${item.from_leave_type_name ?? item.from_leave_type_id ?? "—"} → ${item.to_leave_type_name ?? item.to_leave_type_id}`}{item.remark && ` · ${item.remark}`}</li>)}</ul>}
   </div>;
 }
 
 export function ScheduleHolidayControls({ canHoliday }: { canHoliday: boolean }) {
+  const [shops, setShops] = useState<Choice[]>([]);
+  const [branches, setBranches] = useState<Choice[]>([]);
   const [branch, setBranch] = useState("");
   const [shop, setShop] = useState("");
   const [date, setDate] = useState("");
@@ -34,6 +38,21 @@ export function ScheduleHolidayControls({ canHoliday }: { canHoliday: boolean })
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    void onboardingApi.shops(controller.signal).then(setShops).catch((cause) => {
+      if (!controller.signal.aborted) setError(operationError(cause));
+    });
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (!shop) return;
+    const controller = new AbortController();
+    void onboardingApi.branches(shop, controller.signal).then(setBranches).catch((cause) => {
+      if (!controller.signal.aborted) setError(operationError(cause));
+    });
+    return () => controller.abort();
+  }, [shop]);
   const load = async () => {
     const results = await Promise.allSettled([
       api<BranchSchedule[]>(`/branch-schedules?branch_id=${encodeURIComponent(branch)}`),
@@ -70,16 +89,16 @@ export function ScheduleHolidayControls({ canHoliday }: { canHoliday: boolean })
       path = `/holiday-calendars/${encodeURIComponent(text(form, "id"))}`; method = "PATCH";
       payload = { name: text(form, "name"), is_active: form.get("is_active") === "on" };
     }
-    void run(async () => { await api(path, { method, body: JSON.stringify(payload) }); await load(); }, "Change saved and reloaded.");
+    void run(async () => { await api(path, { method, body: JSON.stringify(payload) }); await load(); }, "บันทึกและโหลดข้อมูลล่าสุดแล้ว");
   };
   const input = (name: string, label: string, type = "text", required = true) => <label className="block text-sm">{label}<input className={field} name={name} type={type} required={required} /></label>;
-  return <section className="space-y-4 rounded-2xl border border-slate-200 p-5"><h2 className="text-xl font-semibold">Schedules and holidays</h2>
-    <form onSubmit={(e) => { e.preventDefault(); void run(load, "Working arrangements loaded."); }} className="grid gap-3 sm:grid-cols-4"><label className="text-sm">Branch ID<input className={field} pattern="[1-9][0-9]*" required value={branch} onChange={(e) => setBranch(e.target.value)} /></label>{canHoliday && <label className="text-sm">Shop ID<input className={field} pattern="[1-9][0-9]*" required value={shop} onChange={(e) => setShop(e.target.value)} /></label>}<label className="text-sm">Applicable work date<input className={field} type="date" required value={date} onChange={(e) => setDate(e.target.value)} /></label><button className={button} disabled={busy}>Load arrangements</button></form>
+  return <section className="workspace-section space-y-4"><h2 className="text-xl font-semibold">ตารางเวลาสาขาและวันหยุด</h2>
+    <form onSubmit={(e) => { e.preventDefault(); void run(load, "โหลดตารางและวันหยุดแล้ว"); }} className="grid gap-3 sm:grid-cols-4"><label className="text-sm">ร้าน<select className={field} required value={shop} onChange={(e) => { setShop(e.target.value); setBranch(""); setBranches([]); setSchedules([]); setApplicable(null); setHolidays([]); }}><option value="">เลือกร้าน</option>{shops.map((row) => <option key={row.id} value={row.id}>{row.code} · {row.name}</option>)}</select></label><label className="text-sm">สาขา<select className={field} required value={branch} disabled={!shop || branches.length === 0} onChange={(e) => { setBranch(e.target.value); setSchedules([]); setApplicable(null); }}><option value="">เลือกสาขา</option>{branches.map((row) => <option key={row.id} value={row.id}>{row.code} · {row.name}</option>)}</select></label><label className="text-sm">วันที่ตรวจตาราง<input className={field} type="date" required value={date} onChange={(e) => setDate(e.target.value)} /></label><button className={button} disabled={busy}>โหลดตารางและวันหยุด</button></form>
     {message && <p role="status">{message}</p>}{error && <p role="alert" className="text-red-800">{error}</p>}
-    {applicable && <p>Applicable: {applicable.kind === "none" ? "No schedule" : applicable.kind === "override" ? `Override #${applicable.override.id}: ${applicable.override.is_closed ? "Closed" : `${applicable.override.work_start_time} – ${applicable.override.close_time}`}` : `Schedule #${applicable.schedule.id}: ${applicable.schedule.work_start_time} – ${applicable.schedule.standard_close_time}`}</p>}
-    <ul>{schedules.map((row) => <li key={row.id}>#{row.id} · {row.effective_from} – {row.effective_to ?? "ongoing"} · {row.work_start_time} – {row.standard_close_time} · Grace {row.late_grace_minutes} min</li>)}</ul>
-    <div className="grid gap-5 lg:grid-cols-2"><form className="space-y-3" onSubmit={(e) => save(e, "schedule")}><h3 className="font-semibold">New schedule or successor</h3>{input("id", "Prior schedule ID (optional)", "text", false)}{input("work_start_time", "Start time", "time")}{input("standard_close_time", "Close time", "time")}{input("late_grace_minutes", "Grace minutes", "number")}{input("effective_from", "Effective from", "date")}{input("effective_to", "Effective through (optional)", "date", false)}<button className={button} disabled={busy || !branch || !date}>Save schedule</button></form>
-    <form className="space-y-3" onSubmit={(e) => save(e, "override")}><h3 className="font-semibold">Date override</h3>{input("schedule_date", "Override date", "date")}<label className="block"><input name="is_closed" type="checkbox" /> Closed</label>{input("work_start_time", "Start time (open day)", "time", false)}{input("close_time", "Close time (open day)", "time", false)}{input("reason", "Reason", "text")}<button className={button} disabled={busy || !branch || !date}>Save override</button></form></div>
-    {canHoliday && <><h3 className="font-semibold">Shop holidays</h3><ul>{holidays.map((row) => <li key={row.id}>#{row.id} · {row.holiday_date} · {row.name} · {row.is_active ? "Active" : "Inactive"}</li>)}</ul><div className="grid gap-5 lg:grid-cols-2"><form className="space-y-3" onSubmit={(e) => save(e, "holiday")}>{input("holiday_date", "Holiday date", "date")}{input("name", "Holiday name")}<button className={button} disabled={busy || !shop || !branch || !date}>Add holiday</button></form><form className="space-y-3" onSubmit={(e) => save(e, "holiday-update")}>{input("id", "Holiday ID")}{input("name", "Updated name")}<label className="block"><input name="is_active" type="checkbox" defaultChecked /> Active</label><button className={button} disabled={busy || !shop || !branch || !date}>Update holiday</button></form></div></>}
+    {applicable && <p>ตารางที่มีผล: {applicable.kind === "none" ? "ยังไม่มีตารางที่ครอบคลุมวันที่เลือก" : applicable.kind === "override" ? `ตารางเฉพาะวัน #${applicable.override.id}: ${applicable.override.is_closed ? "ปิดสาขา" : `${applicable.override.work_start_time} – ${applicable.override.close_time}`}` : `ตาราง #${applicable.schedule.id}: ${applicable.schedule.work_start_time} – ${applicable.schedule.standard_close_time}`}</p>}
+    <ul>{schedules.map((row) => <li key={row.id}>#{row.id} · {row.effective_from} – {row.effective_to ?? "ไม่กำหนดวันสิ้นสุด"} · {row.work_start_time} – {row.standard_close_time} · อนุโลมมาสาย {row.late_grace_minutes} นาที</li>)}</ul>
+    <div className="grid gap-5 lg:grid-cols-2"><form className="space-y-3" onSubmit={(e) => save(e, "schedule")}><h3 className="font-semibold">เพิ่มหรือเปลี่ยนตารางเวลา</h3><label className="block text-sm">ตารางเดิมที่ต้องการเปลี่ยน<select className={field} name="id"><option value="">เพิ่มตารางใหม่</option>{schedules.map((row) => <option key={row.id} value={row.id}>{row.effective_from} ถึง {row.effective_to ?? "ไม่กำหนด"} · {row.work_start_time}–{row.standard_close_time}</option>)}</select></label>{input("work_start_time", "เวลาเริ่มงาน", "time")}{input("standard_close_time", "เวลาเลิกงาน", "time")}{input("late_grace_minutes", "อนุโลมมาสาย (นาที)", "number")}{input("effective_from", "เริ่มใช้วันที่", "date")}{input("effective_to", "สิ้นสุดวันที่ (ถ้ามี)", "date", false)}<button className={button} disabled={busy || !branch || !date}>บันทึกตารางเวลา</button></form>
+    <form className="space-y-3" onSubmit={(e) => save(e, "override")}><h3 className="font-semibold">ตารางเฉพาะวัน</h3>{input("schedule_date", "วันที่เปลี่ยนตาราง", "date")}<label className="block"><input name="is_closed" type="checkbox" /> ปิดสาขา</label>{input("work_start_time", "เวลาเริ่มงานเมื่อเปิดสาขา", "time", false)}{input("close_time", "เวลาเลิกงานเมื่อเปิดสาขา", "time", false)}{input("reason", "เหตุผล", "text")}<button className={button} disabled={busy || !branch || !date}>บันทึกตารางเฉพาะวัน</button></form></div>
+    {canHoliday && <><h3 className="font-semibold">วันหยุดนักขัตฤกษ์ของร้าน</h3><ul>{holidays.map((row) => <li key={row.id}>#{row.id} · {row.holiday_date} · {row.name} · {row.is_active ? "ใช้งาน" : "ปิดใช้งาน"}</li>)}</ul><div className="grid gap-5 lg:grid-cols-2"><form className="space-y-3" onSubmit={(e) => save(e, "holiday")}>{input("holiday_date", "วันที่หยุด", "date")}{input("name", "ชื่อวันหยุด")}<button className={button} disabled={busy || !shop || !branch || !date}>เพิ่มวันหยุด</button></form><form className="space-y-3" onSubmit={(e) => save(e, "holiday-update")}><label className="block text-sm">วันหยุด<select className={field} name="id" required><option value="">เลือกวันหยุด</option>{holidays.map((row) => <option key={row.id} value={row.id}>{row.holiday_date} · {row.name}</option>)}</select></label>{input("name", "ชื่อวันหยุดใหม่")}<label className="block"><input name="is_active" type="checkbox" defaultChecked /> ใช้งาน</label><button className={button} disabled={busy || !shop || !branch || !date}>บันทึกวันหยุด</button></form></div></>}
   </section>;
 }

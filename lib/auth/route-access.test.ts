@@ -14,13 +14,19 @@ describe("dashboard route access policy", () => {
       "HR",
       "BRANCH_MANAGER",
     ]);
-    expect(routePolicyFor("/settings").roles).toEqual(["OWNER"]);
+    expect(routePolicyFor("/settings").roles).toEqual([
+      "EMPLOYEE",
+      "SUPERVISOR",
+      "BRANCH_MANAGER",
+      "HR",
+      "OWNER",
+    ]);
     expect(routePolicyFor("/accounts/42").roles).toEqual(["OWNER", "HR"]);
     expect(routePolicyFor("/organization").roles).toEqual(["OWNER", "HR"]);
     expect(routePolicyFor("/audit").roles).toEqual(["OWNER", "HR"]);
 
     expect(routePolicyFor("/attendance").roles).toEqual(["OWNER", "HR", "BRANCH_MANAGER", "SUPERVISOR"]);
-    expect(routePolicyFor("/finance").roles).toEqual(["OWNER", "HR"]);
+    expect(routePolicyFor("/finance").roles).toEqual(["OWNER", "HR", "EMPLOYEE"]);
     for (const pathname of ["/attendance", "/leave", "/overtime", "/finance"])
       expect(routePolicyFor(pathname).state).toBe("released");
     expect(routePolicyFor("/unlisted")).toEqual({
@@ -34,7 +40,7 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/payroll", ["BRANCH_MANAGER"])).toBe(true);
     expect(canAccessDashboardPath("/payroll", ["SUPERVISOR", "HR"])).toBe(true);
     expect(canAccessDashboardPath("/payroll", ["SUPERVISOR"])).toBe(false);
-    expect(canAccessDashboardPath("/settings", ["HR"])).toBe(false);
+    expect(canAccessDashboardPath("/settings", ["HR"])).toBe(true);
     expect(canAccessDashboardPath("/employees/7", ["OWNER"])).toBe(true);
     expect(canAccessDashboardPath("/employees/7", ["EMPLOYEE"])).toBe(true);
     expect(canAccessDashboardPath("/employees/new", ["EMPLOYEE"])).toBe(false);
@@ -45,22 +51,27 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/audit", ["HR"])).toBe(true);
     expect(canAccessDashboardPath("/audit", ["BRANCH_MANAGER"])).toBe(false);
     expect(canAccessDashboardPath("/leave", ["EMPLOYEE"])).toBe(true);
-    expect(canAccessDashboardPath("/finance", ["EMPLOYEE"])).toBe(false);
+    expect(canAccessDashboardPath("/finance", ["EMPLOYEE"])).toBe(true);
     expect(canAccessDashboardPath("/attendance", ["EMPLOYEE"])).toBe(false);
     expect(canAccessDashboardPath("/unlisted", ["OWNER"])).toBe(false);
   });
 
   test("keeps employee self-service routes while hiding management workspaces", () => {
-    for (const pathname of ["/employees", "/leave", "/overtime", "/payslips"])
+    for (const pathname of [
+      "/employees",
+      "/leave",
+      "/overtime",
+      "/payslips",
+      "/settings",
+      "/finance",
+    ])
       expect(canAccessDashboardPath(pathname, ["EMPLOYEE"])).toBe(true);
 
     for (const pathname of [
       "/accounts",
       "/attendance",
-      "/finance",
       "/payroll",
       "/reports",
-      "/settings",
     ])
       expect(canAccessDashboardPath(pathname, ["EMPLOYEE"])).toBe(false);
   });

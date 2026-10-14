@@ -67,17 +67,20 @@ const fail = (error: unknown): Notice =>
       }
     : { kind: "error", message: "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง" };
 
-async function allActiveParents(kind: "shop" | "branch"): Promise<Item[]> {
+async function allParents(kind: "shop" | "branch"): Promise<Item[]> {
   const records: Item[] = [];
-  let nextPage = 1;
-  while (true) {
-    const result = await apiRequestPage<BackendItem>(
-      `/v1/${plural[kind]}?page=${nextPage}&page_size=100&is_active=true`,
-    );
-    records.push(...result.data.map((item) => normalize(item, kind)));
-    if (result.page * result.page_size >= result.total) return records;
-    nextPage = result.page + 1;
+  for (const active of [true, false]) {
+    let nextPage = 1;
+    while (true) {
+      const result = await apiRequestPage<BackendItem>(
+        `/v1/${plural[kind]}?page=${nextPage}&page_size=100&is_active=${active}`,
+      );
+      records.push(...result.data.map((item) => normalize(item, kind)));
+      if (result.page * result.page_size >= result.total) break;
+      nextPage = result.page + 1;
+    }
   }
+  return [...new Map(records.map(item => [item.id, item])).values()];
 }
 
 export function OrganizationLive() {
@@ -94,8 +97,10 @@ export function OrganizationLive() {
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [filterParent, setFilterParent] = useState("");
+  const [search, setSearch] = useState("");
   const [timezone, setTimezone] = useState("Asia/Bangkok");
   const [selected, setSelected] = useState<Item | null>(null);
+  const [editing, setEditing] = useState<Item | null>(null);
   const [reason, setReason] = useState("");
 
   useEffect(() => {
@@ -108,6 +113,7 @@ export function OrganizationLive() {
     if (filterParent && parentField[kind]) {
       params.set(parentField[kind], filterParent);
     }
+    if (search.trim()) params.set("search", search.trim());
     apiRequestPage<BackendItem>(`/v1/${plural[kind]}?${params}`)
       .then((result) => {
         if (current) {
@@ -132,14 +138,14 @@ export function OrganizationLive() {
     return () => {
       current = false;
     };
-  }, [kind, active, page, filterParent, version]);
+  }, [kind, active, page, filterParent, search, version]);
 
   useEffect(() => {
     const parentKind: "shop" | "branch" | null =
       kind === "department" ? "branch" : kind === "shop" ? null : "shop";
     if (!parentKind) return;
     let current = true;
-    allActiveParents(parentKind)
+    allParents(parentKind)
       .then((items) => {
         if (current) setParents(items);
       })
@@ -153,7 +159,7 @@ export function OrganizationLive() {
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
-    if (!code.trim() || !name.trim() || (parentField[kind] && !parent)) {
+    if (!code.trim() || !name.trim() || (!editing && parentField[kind] && !parent)) {
       setNotice({
         kind: "error",
         message: "กรอกรหัส ชื่อ และหน่วยงานแม่ให้ครบ",
@@ -166,18 +172,19 @@ export function OrganizationLive() {
       code: code.trim(),
       name: name.trim(),
     };
-    if (parentField[kind]) payload[parentField[kind]] = parent;
+    if (!editing && parentField[kind]) payload[parentField[kind]] = parent;
     if (kind === "branch") payload.timezone = timezone.trim();
     try {
-      await apiRequest(`/v1/${plural[kind]}`, {
-        method: "POST",
+      await apiRequest(`/v1/${plural[kind]}${editing ? `/${encodeURIComponent(editing.id)}` : ""}`, {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       setCode("");
       setName("");
       setParent("");
-      setNotice({ kind: "success", message: `เพิ่ม${names[kind]}แล้ว` });
+      setNotice({ kind: "success", message: `${editing ? "แก้ไข" : "เพิ่ม"}${names[kind]}แล้ว` });
+      setEditing(null);
       setActive(true);
       setPage(1);
       setVersion((value) => value + 1);
@@ -238,16 +245,22 @@ export function OrganizationLive() {
               type="button"
               role="tab"
               aria-selected={kind === value}
+              disabled={busy}
               className={`${styles.button} ${kind === value ? "" : styles.buttonSecondary}`}
               onClick={() => {
+                if (value === kind) { setLoading(true); setVersion(current => current + 1); return; }
                 setKind(value);
                 setPage(1);
                 setParent("");
                 setFilterParent("");
+                setSearch("");
                 setParents([]);
                 setLoading(true);
                 setNotice(null);
                 setSelected(null);
+                setEditing(null);
+                setCode("");
+                setName("");
               }}
             >
               {names[value]}
@@ -255,6 +268,9 @@ export function OrganizationLive() {
           ))}
         </div>
         <div className={styles.toolbar}>
+          <Field label="ค้นหารหัสหรือชื่อ"><input className={styles.input} value={search} onChange={event => {
+            setSearch(event.target.value); setPage(1); setLoading(true);
+          }} /></Field>
           <Field label="สถานะ">
             <select
               className={styles.select}
@@ -285,7 +301,7 @@ export function OrganizationLive() {
                 </option>
                 {parents.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {item.code} · {item.name}{item.is_active ? "" : " · ปิดใช้งาน"}
                   </option>
                 ))}
               </select>
@@ -339,6 +355,11 @@ export function OrganizationLive() {
                         </StatusBadge>
                       </td>
                       <td>
+                        <button className={styles.buttonSecondary} type="button" disabled={busy} onClick={() => {
+                          setEditing(item); setCode(item.code); setName(item.name);
+                          setParent(item.parent_id ?? ""); setTimezone(item.timezone ?? "Asia/Bangkok");
+                          setSelected(null); setNotice(null);
+                        }}>แก้ไข</button>
                         {item.is_active ? (
                           <button
                             className={styles.buttonSecondary}
@@ -396,7 +417,7 @@ export function OrganizationLive() {
         )}
       </section>
       <section className={`${styles.panel} ${styles.span4}`}>
-        <h2>เพิ่ม{names[kind]}</h2>
+        <h2>{editing ? "แก้ไข" : "เพิ่ม"}{names[kind]}</h2>
         <form onSubmit={(event) => void create(event)}>
           <div className={styles.formGrid}>
             <Field label="รหัส">
@@ -413,7 +434,7 @@ export function OrganizationLive() {
                 className={styles.input}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                maxLength={150}
+                maxLength={kind === "department" || kind === "position" ? 100 : 150}
                 required
               />
             </Field>
@@ -422,13 +443,14 @@ export function OrganizationLive() {
                 <select
                   className={styles.select}
                   value={parent}
+                  disabled={!!editing}
                   onChange={(event) => setParent(event.target.value)}
                   required
                 >
                   <option value="">เลือกหน่วยงานแม่</option>
-                  {parents.map((item) => (
+                  {parents.filter(item => item.is_active || editing?.parent_id === item.id).map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.name}
+                      {item.code} · {item.name}
                     </option>
                   ))}
                 </select>
@@ -446,8 +468,11 @@ export function OrganizationLive() {
             ) : null}
           </div>
           <button className={styles.button} type="submit" disabled={busy}>
-            เพิ่ม{names[kind]}
+            {editing ? "บันทึกการแก้ไข" : `เพิ่ม${names[kind]}`}
           </button>
+          {editing && <button className={styles.buttonSecondary} type="button" disabled={busy} onClick={() => {
+            setEditing(null); setCode(""); setName(""); setParent(""); setTimezone("Asia/Bangkok");
+          }}>ยกเลิกการแก้ไข</button>}
         </form>
       </section>
       {selected ? (

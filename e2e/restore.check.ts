@@ -1,0 +1,22 @@
+import { createHash } from "node:crypto";
+import { test, expect } from "@playwright/test";
+test("restored PDF retains exact bytes, locked totals and download authorization", async ({ page }) => {
+  const id = process.env.RESTORED_PAYSLIP_ID, hash = process.env.RESTORED_PDF_SHA256;
+  if (!id || !/^[1-9]\d*$/.test(id) || !hash || !/^[a-f0-9]{64}$/.test(hash)) throw new Error("Supply synthetic restored payslip ID and its stored SHA256.");
+  await page.goto("/login");
+  await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("admin");
+  await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
+  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
+  const metadata = await page.request.get(`/api/v1/payslips/${id}`);
+  expect(metadata.status()).toBe(200);
+  const text = await metadata.text(); expect(text).not.toContain("file_storage_key");
+  expect(JSON.parse(text).data).toMatchObject({ status: "generated", net_pay: "2752.91" });
+  const pdf = await page.request.get(`/api/v1/payslips/${id}/download`);
+  expect(pdf.status()).toBe(200); expect(pdf.headers()["content-type"]).toContain("application/pdf");
+  const bytes = await pdf.body(); expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(createHash("sha256").update(bytes).digest("hex")).toBe(hash);
+  await page.getByRole("button", { name: "ออกจากระบบ", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect((await page.request.get(`/api/v1/payslips/${id}/download`)).status()).toBe(401);
+});

@@ -13,7 +13,7 @@ export type Payslip = {
 export type PayslipDelivery = {
   id: string;
   recipient_email: string;
-  status: "sent" | "failed";
+  status: "pending" | "sent" | "failed";
   attempted_at: string;
 };
 export type PayslipResult<T> = { data: T; requestId: string | null };
@@ -35,5 +35,6 @@ export const payslipApi = {
   generate: (recordId: string, options?: PayslipApiOptions) => request<Payslip>(`/payroll-records/${encodeURIComponent(recordId)}`, options, { method: "POST", body: "{}" }),
   deliveries: (payslipId: string, options?: PayslipApiOptions) => request<PayslipDelivery[]>(`/${encodeURIComponent(payslipId)}/deliveries`, options),
   deliver: (payslipId: string, recipientEmail: string, options?: PayslipApiOptions) => request<PayslipDelivery>(`/${encodeURIComponent(payslipId)}/deliveries`, options, { method: "POST", body: JSON.stringify({ recipient_email: recipientEmail }) }),
+  resolveDelivery: (payslipId:string,attemptId:string,body:{outcome:"sent"|"failed";reason:string;provider_reference?:string})=>request<PayslipDelivery>(`/${encodeURIComponent(payslipId)}/deliveries/${encodeURIComponent(attemptId)}/resolve`,{}, {method:"POST",body:JSON.stringify(body)}),
   void: (payslipId: string, options?: PayslipApiOptions) => request<{ id: string; status: "voided" }>(`/${encodeURIComponent(payslipId)}/void`, options, { method: "POST", body: "{}" }),
 };

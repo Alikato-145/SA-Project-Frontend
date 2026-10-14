@@ -10,7 +10,7 @@ export default async function EmployeeDocumentsPage({
   return (
     <PreviewFrame
       title="เอกสารพนักงาน"
-      description="พื้นที่เอกสารยังไม่เปิดใช้งาน รายละเอียดพนักงานแสดงตามสิทธิ์ของบัญชีที่เข้าสู่ระบบ"
+      description="แนบและดาวน์โหลดเอกสารพนักงานตามขอบเขตสิทธิ์ เอกสารที่บันทึกจะเก็บเป็นหลักฐาน"
     >
       <EmployeeDocumentsLive employeeId={employeeId} />
     </PreviewFrame>
