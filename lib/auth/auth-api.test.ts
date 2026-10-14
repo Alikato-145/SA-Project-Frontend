@@ -52,8 +52,10 @@ test("current actor request includes the browser session", async () => {
     return Promise.resolve(new Response(JSON.stringify({ ok: true, data: { account: {}, grants: [], capabilities: [] } }), { status: 200 }));
   }) as typeof fetch;
   try {
-    await authApi.current();
+    const controller = new AbortController();
+    await authApi.current(controller.signal);
     expect(init?.credentials).toBe("include");
+    expect(init?.signal).toBe(controller.signal);
   } finally { globalThis.fetch = originalFetch; }
 });
 

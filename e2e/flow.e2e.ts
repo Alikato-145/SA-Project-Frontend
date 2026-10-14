@@ -139,6 +139,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await expect(employeePage.getByRole("heading", { name: "บัญชีนี้ยังไม่ได้รับบทบาท", exact: true })).toBeVisible();
   await mutate(`/accounts/${onboard.account_id}/roles`, { role_code: "EMPLOYEE", reason: "ทดสอบสิทธิ์ครบวงจร" });
   await employeePage.reload();
+  await expect(employeePage.getByRole("link", { name: "การลา", exact: true })).toBeVisible();
   await employeePage.goto(`${baseURL}/leave`);
   await expect(employeePage.getByRole("heading", { name: "การลา", exact: true })).toBeVisible();
   await mutate("/branch-schedules", { branch_id: branch.id, work_start_time: "09:00", standard_close_time: "18:00", late_grace_minutes: 5, effective_from: "2026-09-01" });

@@ -62,8 +62,8 @@ export const authApi = {
       credentials: "include",
     });
   },
-  current() {
-    return apiRequest<AuthenticatedActor>("/v1/auth/me", { credentials: "include" });
+  current(signal?: AbortSignal) {
+    return apiRequest<AuthenticatedActor>("/v1/auth/me", { credentials: "include", signal });
   },
   logout() {
     return apiRequest<unknown>("/v1/auth/logout", {

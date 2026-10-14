@@ -20,11 +20,13 @@ export function DashboardAccessGuard({
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
     void authApi
-      .current()
-      .then(setActor)
-      .catch(() => router.replace("/login"))
-      .finally(() => setChecked(true));
+      .current(controller.signal)
+      .then((current) => { if (!controller.signal.aborted) setActor(current); })
+      .catch(() => { if (!controller.signal.aborted) router.replace("/login"); })
+      .finally(() => { if (!controller.signal.aborted) setChecked(true); });
+    return () => controller.abort();
   }, [router]);
 
   if (!checked)
