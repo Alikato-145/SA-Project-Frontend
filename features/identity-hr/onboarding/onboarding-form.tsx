@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { authApi, type AuthenticatedActor } from "@/lib/auth/auth-api";
 import { ApiClientError } from "@/lib/api/client";
 import { RequestState } from "../ui/request-states";
 import { styles } from "../ui/primitives";
@@ -85,6 +86,10 @@ function messageFor(cause: unknown): string {
 }
 
 export function OnboardingForm() {
+  const [actor, setActor] = useState<AuthenticatedActor | null>(null);
+  const canAdminister = actor?.grants.some(grant => grant.scope === "all" && (grant.role_code === "HR" || grant.role_code === "OWNER")) ?? false;
+  const branchIds = actor?.grants.filter(grant => grant.scope === "branch" && grant.role_code === "BRANCH_MANAGER").map(grant => grant.branch_id) ?? [];
+  useEffect(() => { void authApi.current().then(setActor).catch(() => setActor(null)); }, []);
   const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [draft, setDraft] = useState<Draft>(blank);
@@ -431,7 +436,7 @@ export function OnboardingForm() {
                 disabled={!draft.shop_id || loadingOrg}
               >
                 <option value="">เลือกสาขา</option>
-                {branches.map((item) => (
+                {branches.filter(item => canAdminister || branchIds.includes(item.id)).map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.code} · {item.name}
                   </option>
@@ -546,6 +551,7 @@ export function OnboardingForm() {
             <label className={styles.check}>
               <input
                 type="checkbox"
+                disabled={!canAdminister}
                 checked={draft.bank}
                 onChange={(e) => {
                   set("bank", e.target.checked);
@@ -614,6 +620,7 @@ export function OnboardingForm() {
             <label className={styles.check}>
               <input
                 type="checkbox"
+                disabled={!canAdminister}
                 checked={draft.account}
                 onChange={(e) => {
                   set("account", e.target.checked);

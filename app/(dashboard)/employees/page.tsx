@@ -45,8 +45,8 @@ export default function EmployeesPage() {
           setCanManage(
             actor.grants.some(
               (grant) =>
-                grant.scope === "all" &&
-                (grant.role_code === "HR" || grant.role_code === "OWNER"),
+                (grant.scope === "all" && (grant.role_code === "HR" || grant.role_code === "OWNER")) ||
+                (grant.scope === "branch" && grant.role_code === "BRANCH_MANAGER" && grant.branch_id !== null),
             ),
           );
       })

@@ -44,6 +44,7 @@ describe("dashboard route access policy", () => {
     expect(canAccessDashboardPath("/employees/7", ["OWNER"])).toBe(true);
     expect(canAccessDashboardPath("/employees/7", ["EMPLOYEE"])).toBe(true);
     expect(canAccessDashboardPath("/employees/new", ["EMPLOYEE"])).toBe(false);
+    expect(canAccessDashboardPath("/employees/new", ["BRANCH_MANAGER"])).toBe(true);
     expect(canAccessDashboardPath("/payslips", ["EMPLOYEE"])).toBe(true);
     expect(canAccessDashboardPath("/payslips", ["HR"])).toBe(true);
     expect(canAccessDashboardPath("/payslips", ["OWNER"])).toBe(true);

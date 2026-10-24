@@ -55,6 +55,7 @@ export function EmployeeReadView({
   const [state, setState] = useState<ReadState>({ kind: "loading" });
   const [refresh, setRefresh] = useState(0);
   const [canManage, setCanManage] = useState(false);
+  const [managerBranches, setManagerBranches] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -62,7 +63,8 @@ export function EmployeeReadView({
     authApi
       .current()
       .then((actor) => {
-        if (active)
+        if (active) {
+          setManagerBranches(actor.grants.filter(grant => grant.role_code === "BRANCH_MANAGER" && grant.scope === "branch" && grant.branch_id !== null).map(grant => grant.branch_id!));
           setCanManage(
             actor.grants.some(
               (grant) =>
@@ -70,6 +72,7 @@ export function EmployeeReadView({
                 (grant.role_code === "HR" || grant.role_code === "OWNER"),
             ),
           );
+        }
       })
       .catch(() => {
         if (active) setCanManage(false);
@@ -165,7 +168,7 @@ export function EmployeeReadView({
             }
           />
         ) : view === "profile" ? (
-          <><EmployeeProfile employee={state.employee} />{canManage && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
+          <><EmployeeProfile employee={state.employee} />{(canManage || (state.employee.branch_id !== null && managerBranches.includes(state.employee.branch_id))) && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
         ) : (
           <section aria-label={titles[view]}>
             <div className={styles.sectionHead}>
