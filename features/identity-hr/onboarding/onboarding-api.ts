@@ -21,6 +21,7 @@ export type OnboardingInput = {
     employment_type: "full_time" | "part_time" | "temporary";
     base_salary: string;
     welfare_amount: string;
+    is_social_security_member?: boolean;
     effective_from: string;
   };
   bank_account?: {

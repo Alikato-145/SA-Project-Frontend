@@ -7,7 +7,10 @@ import type {
   WeeklyHolidayItem,
 } from "../contracts/types";
 
+export interface PaymentDestination { payment_method: "cash" | "transfer"; promptpay_phone: string | null }
+
 export interface EmployeeAssignment {
+  is_social_security_member?: boolean;
   id: string;
   employee_id: string;
   branch_id: string;
@@ -34,6 +37,7 @@ export type NewAssignment = Pick<
   | "position_id"
   | "employment_type"
   | "base_salary"
+  | "is_social_security_member"
   | "welfare_amount"
   | "effective_from"
   | "effective_to"
@@ -62,6 +66,12 @@ const options = (signal?: AbortSignal) => ({
 });
 
 export const employeeReadApi = {
+  paymentDestination(employeeId: string, signal?: AbortSignal) {
+    return apiRequest<PaymentDestination>(`/v1/employees/${encodeURIComponent(employeeId)}/payment-destination`, options(signal));
+  },
+  savePaymentDestination(employeeId: string, input: PaymentDestination) {
+    return apiRequest<PaymentDestination>(`/v1/employees/${encodeURIComponent(employeeId)}/payment-destination`, mutation("PUT", input));
+  },
   list(filters: EmployeeListFilters, signal?: AbortSignal) {
     const query = new URLSearchParams({
       page: String(filters.page),
@@ -155,7 +165,7 @@ export const employeeReadApi = {
   },
 };
 
-function mutation(method: "POST" | "PATCH", body: object = {}) {
+function mutation(method: "POST" | "PATCH" | "PUT", body: object = {}) {
   return {
     method,
     credentials: "include" as const,

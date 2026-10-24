@@ -29,6 +29,7 @@ type Draft = {
   employment_type: "full_time" | "part_time" | "temporary";
   base_salary: string;
   welfare_amount: string;
+  is_social_security_member: boolean;
   bank: boolean;
   bank_code: string;
   bank_name: string;
@@ -52,6 +53,7 @@ const blank: Draft = {
   employment_type: "full_time",
   base_salary: "",
   welfare_amount: "0.00",
+  is_social_security_member: true,
   bank: false,
   bank_code: "",
   bank_name: "",
@@ -214,6 +216,7 @@ export function OnboardingForm() {
           employment_type: draft.employment_type,
           base_salary: draft.base_salary,
           welfare_amount: draft.welfare_amount,
+          is_social_security_member: draft.is_social_security_member,
           effective_from: draft.hire_date,
         },
         ...(draft.bank
@@ -518,6 +521,7 @@ export function OnboardingForm() {
               />
             </label>
           </div>
+          <label className="my-4 flex items-center gap-2"><input type="checkbox" checked={draft.is_social_security_member} onChange={event => set("is_social_security_member", event.target.checked)} />สมาชิกประกันสังคม</label>
           {loading ? (
             <RequestState
               kind="loading"

@@ -11,6 +11,7 @@ import type {
 import { EmployeeTabs, StatusBadge, styles } from "../ui/primitives";
 import { RequestState } from "../ui/request-states";
 import { employeeReadApi, type EmployeeAssignment } from "./employee-read-api";
+import { EmployeePaymentDestinationControls } from "./employee-payment-destination-controls";
 import { EmployeeProfile } from "./employee-profile";
 import { EmployeeProfileControls } from "./employee-profile-controls";
 import { EmployeeWriteControls } from "./employee-write-controls";
@@ -54,6 +55,7 @@ export function EmployeeReadView({
 }) {
   const [state, setState] = useState<ReadState>({ kind: "loading" });
   const [refresh, setRefresh] = useState(0);
+  const [selfEmployeeId, setSelfEmployeeId] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [managerBranches, setManagerBranches] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
@@ -64,6 +66,7 @@ export function EmployeeReadView({
       .current()
       .then((actor) => {
         if (active) {
+          setSelfEmployeeId(actor.account.employee?.id ?? null);
           setManagerBranches(actor.grants.filter(grant => grant.role_code === "BRANCH_MANAGER" && grant.scope === "branch" && grant.branch_id !== null).map(grant => grant.branch_id!));
           setCanManage(
             actor.grants.some(
@@ -168,7 +171,7 @@ export function EmployeeReadView({
             }
           />
         ) : view === "profile" ? (
-          <><EmployeeProfile employee={state.employee} />{(canManage || (state.employee.branch_id !== null && managerBranches.includes(state.employee.branch_id))) && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
+          <><EmployeeProfile employee={state.employee} />{(canManage || selfEmployeeId === employeeId) && <EmployeePaymentDestinationControls employeeId={employeeId} canEdit={canManage} />}{(canManage || (state.employee.branch_id !== null && managerBranches.includes(state.employee.branch_id))) && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
         ) : (
           <section aria-label={titles[view]}>
             <div className={styles.sectionHead}>
@@ -218,6 +221,9 @@ export function EmployeeReadView({
                       <div>
                         <dt>เงินเดือนฐาน</dt>
                         <dd>฿{item.base_salary}</dd>
+                      </div>
+                      <div>
+                        <dt>สมาชิกประกันสังคม</dt><dd>{item.is_social_security_member === false ? "ไม่เป็นสมาชิก" : "เป็นสมาชิก"}</dd>
                       </div>
                       <div>
                         <dt>สวัสดิการ</dt>

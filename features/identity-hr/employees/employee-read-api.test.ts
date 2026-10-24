@@ -83,3 +83,16 @@ test("assignment change sends decimal strings to the append-only route", async (
     globalThis.fetch = originalFetch;
   }
 });
+
+test("payment destination uses a dedicated contract without contact phone", async () => {
+  const originalFetch = globalThis.fetch;
+  let call: RequestInit | undefined;
+  let url = "";
+  globalThis.fetch = (async (input, init) => { url = String(input); call = init; return new Response(JSON.stringify({ data: { payment_method: "transfer", promptpay_phone: "0812345678" }, request_id: "payment" })); }) as typeof fetch;
+  try {
+    await employeeReadApi.savePaymentDestination("41", { payment_method: "transfer", promptpay_phone: "0812345678" });
+    expect(url).toBe("/api/v1/employees/41/payment-destination");
+    expect(call?.method).toBe("PUT");
+    expect(JSON.parse(String(call?.body))).toEqual({ payment_method: "transfer", promptpay_phone: "0812345678" });
+  } finally { globalThis.fetch = originalFetch; }
+});

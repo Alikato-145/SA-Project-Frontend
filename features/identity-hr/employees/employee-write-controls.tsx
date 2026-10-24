@@ -165,6 +165,7 @@ export function EmployeeWriteControls({
       ) as NewAssignment["employment_type"],
       base_salary: field(data, "base_salary"),
       welfare_amount: field(data, "welfare_amount"),
+      is_social_security_member: data.get("is_social_security_member") === "on",
       effective_from: field(data, "effective_from"),
       effective_to: field(data, "effective_to") || null,
     };
@@ -311,6 +312,7 @@ export function EmployeeWriteControls({
       )}
       {view === "employment" && (
         <form onSubmit={submitAssignment}>
+          <label className="my-4 flex items-center gap-2"><input type="checkbox" name="is_social_security_member" defaultChecked={latestAssignment?.is_social_security_member ?? true} />สมาชิกประกันสังคมในช่วงการจ้างใหม่</label>
           <h3>เพิ่มช่วงการจ้างใหม่</h3>
           <p className={styles.muted}>
             ระบบสิ้นสุดช่วงเดิมก่อนวันเริ่มใหม่หนึ่งวัน
