@@ -16,7 +16,7 @@ export type PayrollRecord = { id?: string; payroll_period_id?: string; status?: 
 export type PayrollBlocker = { code: string; employeeId: string | null; detail: string; employeeName?: string; branchId?: string; affectedDates?: string[]; configurationKeys?: string[] };
 export type PayrollRosterEntry = { employeeId: string; employeeCode: string; employeeName: string; branchId: string; branchName: string; effectiveFrom: string; effectiveTo: string | null };
 export type PayrollPreview = { period: PayrollPeriod; records: PayrollRecord[]; blockers: PayrollBlocker[]; roster?: PayrollRosterEntry[] };
-export type PayrollAdjustment = { id: string; original_payroll_record_id: string; applied_payroll_period_id: string | null;
+export type PayrollAdjustment = { id: string; employee_id: string; original_payroll_record_id: string | null; applied_payroll_period_id: string | null;
   direction: PayrollDirection; amount: string; reason: string; status: string; requested_by_user_account_id: string;
   requested_at: string; approved_by_user_account_id: string | null; approved_at: string | null; applied_payroll_item_id: string | null };
 export type PayrollResult<T> = { data: T; requestId: string | null };
@@ -46,7 +46,7 @@ export const payrollApi = {
   previewPeriod: (periodId: string, options?: PayrollApiOptions) => request<PayrollPreview>(`/periods/${encodeURIComponent(periodId)}/preview`, options, { method: "POST", body: "{}" }),
   lockPeriod: (periodId: string, options?: PayrollApiOptions) => request<PayrollPreview>(`/periods/${encodeURIComponent(periodId)}/lock`, options, { method: "POST", body: "{}" }),
   getRecord: (periodId: string, recordId: string, options?: PayrollApiOptions) => request<PayrollRecord>(`/periods/${encodeURIComponent(periodId)}/records/${encodeURIComponent(recordId)}`, options),
-  listAdjustments: (recordId: string | undefined, options?: PayrollApiOptions) => apiRequestAllEnvelope<PayrollAdjustment>(`/v1/payroll/adjustments${recordId ? `?record_id=${encodeURIComponent(recordId)}` : ""}`, { ...options, credentials: "same-origin" }),
-  requestAdjustment: (body: { original_payroll_record_id: string; applied_payroll_period_id: string; direction: PayrollDirection; amount: string; reason: string }, options?: PayrollApiOptions) => request<PayrollAdjustment>("/adjustments", options, { method: "POST", body: JSON.stringify(body) }),
+  listAdjustments: (recordId: string | undefined, options?: PayrollApiOptions & { periodId?: string }) => apiRequestAllEnvelope<PayrollAdjustment>(`/v1/payroll/adjustments${recordId ? `?record_id=${encodeURIComponent(recordId)}` : options?.periodId ? `?period_id=${encodeURIComponent(options.periodId)}` : ""}`, { ...options, credentials: "same-origin" }),
+  requestAdjustment: (body: { employee_id?: string; original_payroll_record_id?: string; applied_payroll_period_id: string; direction: PayrollDirection; amount: string; reason: string }, options?: PayrollApiOptions) => request<PayrollAdjustment>("/adjustments", options, { method: "POST", body: JSON.stringify(body) }),
   decideAdjustment: (id: string, decision: "approve" | "reject", options?: PayrollApiOptions) => request<PayrollAdjustment>(`/adjustments/${encodeURIComponent(id)}/${decision}`, options, { method: "POST", body: "{}" }),
 };

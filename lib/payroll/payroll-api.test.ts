@@ -43,3 +43,11 @@ describe("payroll API", () => {
     await expect(payrollApi.listPeriods("1", { fetcher: offline })).rejects.toBeInstanceOf(ApiClientError);
   });
 });
+
+
+test("current adjustments filter by target period and retain exact amounts without an origin", async () => {
+  await payrollApi.listAdjustments(undefined, { fetcher, periodId: "20" });
+  expect(calls.at(-1)?.url).toContain("period_id=20");
+  await payrollApi.requestAdjustment({ employee_id: "10", applied_payroll_period_id: "20", direction: "deduction", amount: "125.01", reason: "Current deduction" }, { fetcher });
+  expect(JSON.parse(String(calls.at(-1)?.init?.body))).toEqual({ employee_id: "10", applied_payroll_period_id: "20", direction: "deduction", amount: "125.01", reason: "Current deduction" });
+});
