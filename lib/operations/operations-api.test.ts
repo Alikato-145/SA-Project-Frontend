@@ -7,11 +7,11 @@ describe("signed-in operations client", () => {
   test("uses shared envelope, session and exact public values", async () => {
     const id = "9007199254740993";
     const data = await operationsRequest<{ id: string; amount: string }>("/advance-requests", {
-      method: "POST", body: JSON.stringify({ employee_id: id, amount: "0.01" }),
+      method: "POST", body: JSON.stringify({ employee_id: id, amount: "0.01", reason: "Emergency household expenses" }),
       fetcher: async (url, init) => {
         expect(url).toBe("/api/v1/advance-requests");
         expect(init?.credentials).toBe("same-origin");
-        expect(init?.body).toBe(`{"employee_id":"${id}","amount":"0.01"}`);
+        expect(init?.body).toBe(`{"employee_id":"${id}","amount":"0.01","reason":"Emergency household expenses"}`);
         return new Response(JSON.stringify({ data: { id, amount: "0.01" }, request_id: "req-1" }));
       },
     });

@@ -70,7 +70,7 @@ test("EMPLOYEE submits own leave and eligible advance, reloads and sees HR decis
     expect(ownLeaves.find((r: { id: string }) => r.id === leave.id)).toMatchObject({ employee_id: onboard.employee.id, status: "pending" });
     await employee.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/employee-leave-persisted.png`, fullPage: true });
     expect((await employee.request.post("/api/v1/leave-requests", { headers, data: { employee_id: "99999999", leave_type_id: leaveType.id, start_date: leaveDate, end_date: leaveDate } })).status()).toBe(403);
-    expect((await employee.request.post("/api/v1/advance-requests", { headers, data: { employee_id: "99999999", amount: "100.01" } })).status()).toBe(day >= 20 ? 403 : 422);
+    expect((await employee.request.post("/api/v1/advance-requests", { headers, data: { employee_id: "99999999", amount: "100.01", reason: "Forged person must be denied" } })).status()).toBe(day >= 20 ? 403 : 422);
     await page.context().clearCookies(); await login(page, "hr"); await page.goto("/leave");
     const leaveFilter = page.locator("form").filter({ has: page.getByRole("button", { name: "โหลดคำขอ", exact: true }) });
     const leavePicker = leaveFilter.getByPlaceholder("ค้นหาชื่อหรือรหัสพนักงาน", { exact: true });
@@ -97,6 +97,7 @@ test("EMPLOYEE submits own leave and eligible advance, reloads and sees HR decis
     await employee.goto("/finance");
     const advanceForm = employee.locator("form").filter({ has: employee.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true }) });
     await advanceForm.getByLabel("จำนวนเงิน", { exact: true }).fill("100.01");
+    await advanceForm.getByLabel("เหตุผลที่ขอเงินทดรองจ่าย", { exact: true }).fill(`Household expenses ${key}`);
     const submittedAdvance = employee.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/advance-requests" && r.request().method() === "POST");
     await advanceForm.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true }).click();
     const advanceResponse = await submittedAdvance;
