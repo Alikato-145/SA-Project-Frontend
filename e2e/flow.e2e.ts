@@ -130,6 +130,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   expect(savedOnboarding.ok(), await savedOnboarding.text()).toBe(true);
   const onboard = (await savedOnboarding.json()).data as { employee: { id: string }; account_id: string; temporary_password: string };
   const employeeId = onboard.employee.id;
+  await mutate(`/employees/${employeeId}/payment-destination`, { payment_method: "transfer", promptpay_phone: "0812345678" }, "PUT");
   const employeeContext = await browser.newContext();
   const employeePage = await employeeContext.newPage();
   await employeePage.goto(`${baseURL}/login`);
@@ -261,6 +262,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await test.info().attach("payslip-full-journey.pdf", { body: pdfBytes, contentType: "application/pdf" });
   const delivery = await mutate<{ status: string }>(`/payslips/${pdf.id}/deliveries`, { recipient_email: `uat-${suffix.toLowerCase()}@example.test` });
   expect(delivery.status).toBe("sent");
+  await mutate(`/payroll/periods/${period.id}/payments/prepare`, {});
   for (const kind of ["bank-transfer", "social-security"]) {
     const exported = await page.request.get(`/api/v1/reports/${kind}.csv?period_id=${period.id}`);
     expect(exported.status(), await exported.text()).toBe(200);
@@ -293,8 +295,9 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   const targetGroup = page.getByRole("group", { name: "งวดปลายทาง", exact: true });
   await targetGroup.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(shop.id);
   await targetGroup.getByRole("combobox", { name: "งวดเงินเดือน", exact: true }).selectOption(targetPeriod.id);
-  await page.getByLabel("จำนวนเงิน", { exact: true }).fill("100.00");
-  await page.getByLabel("เหตุผล", { exact: true }).fill("ทดสอบส่วนต่างย้อนหลังโดยไม่แก้ผลเดิม");
+  const adjustmentForm = page.locator("form").filter({ has: page.getByRole("button", { name: "ส่งรายการปรับปรุง", exact: true }) });
+  await adjustmentForm.getByLabel("จำนวนเงิน", { exact: true }).fill("100.00");
+  await adjustmentForm.getByLabel("เหตุผล", { exact: true }).fill("ทดสอบส่วนต่างย้อนหลังโดยไม่แก้ผลเดิม");
   await page.getByRole("button", { name: "ส่งรายการปรับปรุง", exact: true }).click();
   await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "อนุมัติ", exact: true }).click();
