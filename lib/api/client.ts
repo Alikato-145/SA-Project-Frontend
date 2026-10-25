@@ -53,6 +53,7 @@ const thaiErrorMessageByCode: Record<string, string> = {
   FORBIDDEN_SCOPE: "คุณไม่มีสิทธิ์ดำเนินการนี้",
   ORIGIN_NOT_ALLOWED: "ไม่อนุญาตให้ส่งคำขอจากหน้านี้",
   RESOURCE_NOT_FOUND: "ไม่พบข้อมูลที่ต้องการ",
+  PAYMENT_STATE_CONFLICT: "รายการนี้มีการยืนยันจ่ายหรือยกเลิกแล้วด้วยข้อมูลอื่น กรุณาโหลดข้อมูลใหม่",
   STATE_CONFLICT: "ไม่สามารถดำเนินการได้ เนื่องจากสถานะข้อมูลปัจจุบันไม่รองรับ",
   VALIDATION_ERROR: "ข้อมูลที่กรอกไม่ถูกต้องหรือไม่ครบถ้วน",
   MALFORMED_REQUEST: "รูปแบบคำขอไม่ถูกต้อง",
