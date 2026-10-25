@@ -43,6 +43,11 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
   const origin = new URL(baseURL!).origin;
   const transfers = f.employees.filter(e => e.kind === "transfer");
   await login(page, "hr");
+  const member = f.employees.find(e => e.kind === "member")!;
+  const bankResponse = await page.request.post(`/api/v1/employees/${transfers[0]!.id}/bank-accounts`, { headers: { origin }, data: { bank_code: "004", bank_name: "Frozen bank", account_holder_name: "Frozen transfer holder", account_number: "1234561234", is_primary: true } });
+  expect(bankResponse.ok(), await bankResponse.text()).toBe(true);
+  const transferBank = (await bankResponse.json()).data;
+  expect((await page.request.put(`/api/v1/employees/${member.id}/payment-destination`, { headers: { origin }, data: { payment_method: "transfer", promptpay_phone: "0812345678" } })).ok()).toBe(true);
   await open(page, f);
   const section = page.getByRole("region", { name: "เตรียมจ่ายเงินเดือน", exact: true });
   for (const label of ["สมาชิกประกันสังคม", "เงินสด · ไม่เป็นสมาชิกประกันสังคม", "โอน PromptPay · ไม่เป็นสมาชิกประกันสังคม"])
@@ -76,7 +81,32 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
   await page.locator('[name="phone"]').fill("0866666666");
   await page.getByRole("button", { name: "บันทึกข้อมูลพนักงาน", exact: true }).click();
   await expect(page.getByText("บันทึกข้อมูลพนักงานแล้ว", { exact: true })).toBeVisible();
+  expect((await page.request.patch(`/api/v1/employees/${transfers[0]!.id}/bank-accounts/${transferBank.id}`, { headers: { origin }, data: { bank_code: "006", bank_name: "Live bank", account_holder_name: "Live transfer holder", account_number: "9876549999" } })).ok()).toBe(true);
+  const memberBanks = (await (await page.request.get(`/api/v1/employees/${member.id}/bank-accounts`)).json()).data;
+  expect((await page.request.patch(`/api/v1/employees/${member.id}/bank-accounts/${memberBanks[0].id}`, { headers: { origin }, data: { bank_code: "006", bank_name: "Live bank", account_holder_name: "Live member holder", account_number: "9876549999" } })).ok()).toBe(true);
+  expect((await page.request.put(`/api/v1/employees/${member.id}/payment-destination`, { headers: { origin }, data: { payment_method: "transfer", promptpay_phone: "0899999999" } })).ok()).toBe(true);
   await open(page, f);
+  const form = section.getByRole("region", { name: "ตรวจสอบการจ่ายเงิน", exact: true });
+  for (const [employee, holder] of [[transfers[0]!, "Frozen transfer holder"], [member, "Payment member"]] as const) {
+    const row = section.locator(`[data-payment-record="${employee.recordId}"]`);
+    await row.getByRole("button", { name: "ยืนยันจ่ายเงิน", exact: true }).click();
+    await expect(form.getByText(`บัญชีธนาคารที่ตรึงไว้: 004 · ${holder} · บัญชีลงท้าย 1234`, { exact: true })).toBeVisible();
+    await expect(form.getByText("เบอร์ PromptPay ที่ตรึงไว้: 0812345678", { exact: true })).toBeVisible();
+    await expect(form).not.toContainText("Live");
+    await expect(form).not.toContainText("0899999999");
+    await expect(form).not.toContainText("1234561234");
+    await expect(form).not.toContainText("9876549999");
+    if (employee.kind === "member") {
+      await expect(row.getByRole("button", { name: /แสดง QR/ })).toHaveCount(0);
+      await expect(form).toContainText("กลุ่มสมาชิกประกันสังคมใช้บัญชีธนาคารที่ตรึงไว้ ไม่มี QR สำหรับกลุ่มนี้");
+    }
+    await form.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/dual-destination-${employee.kind}.png` });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await form.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/dual-destination-${employee.kind}-mobile.png` });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await form.getByRole("button", { name: "ปิด", exact: true }).click();
+  }
   await section.getByRole("button", { name: `แสดง QR ${transfers[0]!.code}`, exact: true }).click();
   expect(await decode(page)).toBe(first);
   expect((await page.request.post(`/api/v1/payroll/periods/${f.periodId}/payments/prepare?branch_id=${f.branches[0]}`, { headers: { origin }, data: {} })).ok()).toBe(true);

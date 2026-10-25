@@ -1,4 +1,5 @@
 import { paceLogin } from "./login-pacing";
+import { createMailbox } from "./mailbox";
 import { test, expect, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,7 +13,6 @@ const fixture = JSON.parse(readFileSync(process.env.PAYSLIP_FIXTURE_FILE ?? "../
   report: { branches: { rows: { recordId: number; earnings: string; deductions: string; net: string }[] }[]; totals: { earnings: string; deductions: string; net: string; paid: string; outstanding: string } };
 };
 const evidence = process.env.PAYSLIP_EVIDENCE_DIR ?? "../docs/superpowers/reports/payslip-email-evidence";
-const mailbox = "http://localhost:18025";
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 const slips: Slip[] = [];
 const pdfs: Buffer[] = [];
@@ -67,6 +67,7 @@ async function download(page: Page, filename: string): Promise<Buffer> {
 
 test.describe.serial("locked payslip UI and local email regression", () => {
   test("HR and OWNER each generate/download/send with frozen decimals and durable attempts", async ({ page }) => {
+    const mailbox = createMailbox(page.request);
     test.setTimeout(150000);
     mkdirSync(evidence, { recursive: true });
     expect(fixture.report.totals).toMatchObject({ earnings: "19100.65", deductions: "950.00", net: "18150.65", paid: "0.00", outstanding: "18150.65" });
@@ -92,16 +93,16 @@ test.describe.serial("locked payslip UI and local email regression", () => {
       await expect(page.getByText("SMTP รับข้อความแล้ว ตรวจสอบประวัติการส่งได้ด้านล่าง", { exact: true })).toBeVisible();
       let messageId = "";
       await expect.poll(async () => {
-        const inbox = await (await page.request.get(`${mailbox}/api/v1/messages?limit=100`)).json();
+        const inbox = await (await mailbox.messages()).json();
         messageId = inbox.messages.find((m: { MessageID: string }) => m.MessageID === `payslip-attempt-${attempt.id}@haris-payroll.local`)?.ID ?? "";
         return Boolean(messageId);
       }).toBe(true);
-      const message = await (await page.request.get(`${mailbox}/api/v1/message/${messageId}`)).json();
+      const message = await (await mailbox.message(messageId)).json();
       expect(message.To.map((to: { Address: string }) => to.Address)).toEqual([recipient]);
       expect(message.Text).toContain("ไม่ใช่หลักฐานการโอนหรือจ่ายเงิน");
       expect(message.Attachments).toHaveLength(1);
       expect(message.Attachments[0]).toMatchObject({ FileName: `payslip-${employee.recordId}.pdf`, ContentType: "application/pdf" });
-      const attachment = await page.request.get(`${mailbox}/api/v1/message/${messageId}/part/${message.Attachments[0].PartID}`);
+      const attachment = await mailbox.attachment(messageId, message.Attachments[0].PartID);
       expect(attachment.status()).toBe(200);
       expect((await attachment.body()).equals(pdfs[index]!)).toBe(true);
       await attachment.body().then(bytes => writeFileSync(`${evidence}/${role}-mail-attachment.pdf`, bytes));
