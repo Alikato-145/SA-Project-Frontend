@@ -69,6 +69,8 @@ const thaiErrorMessageByCode: Record<string, string> = {
   LOAN_REQUEST_PAST_DUE_MONTH: "เดือนเริ่มชำระต้องเป็นเดือนปัจจุบันหรือเดือนถัดไป ห้ามสร้างงวดหักย้อนหลัง",
   LOAN_REQUEST_NOT_PENDING: "คำขอเงินกู้นี้ได้รับการพิจารณาแล้ว กรุณาโหลดข้อมูลใหม่",
   LOAN_REQUEST_NOT_FOUND: "ไม่พบคำขอเงินกู้",
+  LEAVE_QUOTA_EXCEEDED: "สิทธิ์วันลาไม่เพียงพอหรือยังไม่ได้กำหนดสิทธิ์สำหรับปีที่ขอ",
+  LEAVE_QUOTA_FROZEN: "สิทธิ์วันลาสำหรับปีที่ขอถูกระงับ กรุณาติดต่อฝ่ายบุคคล",
   PAYROLL_PERIOD_LOCKED: "รอบเงินเดือนถูกล็อกแล้ว จึงแก้ไขไม่ได้",
   PAYROLL_PERIOD_NOT_FOUND: "ไม่พบรอบเงินเดือน",
   PAYROLL_ATTENDANCE_INCOMPLETE: "ข้อมูลการลงเวลาของรอบเงินเดือนยังไม่ครบ",

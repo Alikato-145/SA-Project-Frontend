@@ -146,3 +146,13 @@ describe("apiRequest", () => {
     ).rejects.toMatchObject({ code: "NETWORK_ERROR", status: 0 });
   });
 });
+
+test("leave quota errors explain unavailable entitlement and frozen years", async () => {
+  const { localizeApiError } = await import("./client");
+  for (const [code, expected] of [
+    ["LEAVE_QUOTA_EXCEEDED", "สิทธิ์วันลาไม่เพียงพอหรือยังไม่ได้กำหนดสิทธิ์สำหรับปีที่ขอ"],
+    ["LEAVE_QUOTA_FROZEN", "สิทธิ์วันลาสำหรับปีที่ขอถูกระงับ กรุณาติดต่อฝ่ายบุคคล"],
+  ] as const) {
+    expect(localizeApiError(code, "Leave quota unavailable.")).toBe(expected);
+  }
+});
