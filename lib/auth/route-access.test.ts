@@ -77,6 +77,14 @@ describe("dashboard route access policy", () => {
       expect(canAccessDashboardPath(pathname, ["EMPLOYEE"])).toBe(false);
   });
 
+  test("allows standalone scoped roles to open their own payslip workspace", () => {
+    for (const role of ["SUPERVISOR", "BRANCH_MANAGER"]) {
+      expect(canAccessDashboardPath("/payslips", [role])).toBe(true);
+      expect(canAccessDashboardPath("/reports", [role])).toBe(false);
+      expect(canAccessDashboardPath("/accounts", [role])).toBe(false);
+    }
+  });
+
   test("sends each role to a permitted primary workspace after login", () => {
     expect(postLoginPathFor(["EMPLOYEE"])).toBe("/leave");
     expect(postLoginPathFor(["SUPERVISOR"])).toBe("/attendance");

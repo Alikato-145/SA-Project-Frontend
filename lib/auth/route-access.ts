@@ -36,7 +36,7 @@ export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
   if (pathname === "/payslips")
     return {
       known: true,
-      roles: ["EMPLOYEE", "OWNER", "HR"],
+      roles: allRoles,
       state: "released",
     };
   if (pathname === "/reports")
