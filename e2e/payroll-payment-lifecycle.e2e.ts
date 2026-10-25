@@ -1,7 +1,8 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 const f = JSON.parse(readFileSync(process.env.PAYMENT_LIFECYCLE_FIXTURE_FILE ?? "/private/tmp/haris-task8-browser-fixture.json", "utf8")) as { shopId:string; periodId:string; branches:string[]; employees:{id:string;recordId:string;code:string}[] };
-const login = async (page:Page, user:string) => { await page.goto("/login"); await page.getByLabel("ชื่อผู้ใช้",{exact:true}).fill(user); await page.getByLabel("รหัสผ่าน",{exact:true}).fill("password"); await page.getByRole("button",{name:"เข้าสู่พื้นที่ทำงาน",exact:true}).click(); await expect(page).not.toHaveURL(/\/login$/); };
+const login = async (page:Page, user:string) => { await page.goto("/login"); await page.getByLabel("ชื่อผู้ใช้",{exact:true}).fill(user); await page.getByLabel("รหัสผ่าน",{exact:true}).fill("password"); await paceLogin(); await page.getByRole("button",{name:"เข้าสู่พื้นที่ทำงาน",exact:true}).click(); await expect(page).not.toHaveURL(/\/login$/); };
 const open = async (page:Page) => { await page.goto("/payroll"); await page.getByRole("combobox",{name:"ร้าน",exact:true}).selectOption(f.shopId); await page.getByRole("button",{name:"เปิดสมุดงาน",exact:true}).click(); await page.getByRole("button").filter({hasText:"10/2095"}).click(); await expect(page.getByRole("heading",{name:"เตรียมจ่ายเงินเดือนตามสาขา",exact:true})).toBeVisible(); };
 test("HR and OWNER manually confirm/cancel with retained history, exact totals and reload persistence", async ({page,baseURL}) => {
  test.setTimeout(120000); const origin = new URL(baseURL!).origin;
@@ -11,8 +12,8 @@ test("HR and OWNER manually confirm/cancel with retained history, exact totals a
  await section.getByRole("button",{name:"เตรียมจ่ายสาขาที่เลือก",exact:true}).click();
  const row = (i:number) => section.locator(`[data-payment-record="${f.employees[i]!.recordId}"]`);
  await row(0).getByRole("button",{name:"ยืนยันจ่ายเงิน",exact:true}).click();
- await section.screenshot({path:"/private/tmp/haris-task8-confirm-desktop.png",style:"header, nextjs-portal, .skip-link { visibility: hidden }"});
- await page.setViewportSize({width:390,height:844}); await section.screenshot({path:"/private/tmp/haris-task8-confirm-mobile.png",style:"header, nextjs-portal, .skip-link { visibility: hidden }"}); expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true); await page.setViewportSize({width:1280,height:900});
+ await section.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task8-confirm-desktop.png`,style:"header, nextjs-portal, .skip-link { visibility: hidden }"});
+ await page.setViewportSize({width:390,height:844}); await section.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task8-confirm-mobile.png`,style:"header, nextjs-portal, .skip-link { visibility: hidden }"}); expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true); await page.setViewportSize({width:1280,height:900});
  const form = section.getByRole("region",{name:"ตรวจสอบการจ่ายเงิน",exact:true});
  await expect(form.getByText("ยอดเต็มจำนวน ฿100.01 บาท",{exact:true})).toBeVisible();
  await form.getByLabel("เลขอ้างอิง (ถ้ามี)",{exact:true}).fill("hr-receipt");
@@ -22,13 +23,13 @@ test("HR and OWNER manually confirm/cancel with retained history, exact totals a
  const cancel = async (index:number,reason:string) => { await row(index).getByRole("button",{name:"ยกเลิกการเตรียมจ่าย",exact:true}).click(); await section.getByLabel("เหตุผลการยกเลิก",{exact:true}).fill(reason); await section.getByRole("button",{name:"บันทึกการยกเลิก",exact:true}).click(); await expect(row(index).getByText(reason,{exact:false})).toBeVisible(); };
  await cancel(1,"HR correction");
  await page.reload(); await open(page); await expect(row(0).getByText("อ้างอิง hr-receipt",{exact:false})).toBeVisible(); await expect(row(0).getByRole("button",{name:"ยืนยันจ่ายเงิน",exact:true})).toHaveCount(0); await expect(row(1).getByText("HR correction",{exact:false})).toBeVisible();
- await section.screenshot({path:"/private/tmp/haris-task8-hr-lifecycle.png",style:"header, nextjs-portal, .skip-link { visibility: hidden }"});
+ await section.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task8-hr-lifecycle.png`,style:"header, nextjs-portal, .skip-link { visibility: hidden }"});
  await page.context().clearCookies(); await login(page,"admin"); await open(page);
  await section.getByRole("button",{name:"เตรียมจ่ายสาขาที่เลือก",exact:true}).click();
  await row(1).getByRole("button",{name:"ยืนยันจ่ายเงิน",exact:true}).click(); await form.getByLabel("ตรวจสอบแล้วว่าจ่ายเงินให้พนักงานสำเร็จจริง",{exact:true}).check(); await form.getByRole("button",{name:"บันทึกว่าจ่ายแล้ว",exact:true}).click();
  await cancel(3,"OWNER correction"); await page.reload(); await open(page);
  await expect(section.getByText("ค้างจ่าย ฿25.00 บาท",{exact:true})).toBeVisible(); await expect(row(1).getByText("HR correction",{exact:false})).toBeVisible(); await expect(row(3).getByText("OWNER correction",{exact:false})).toBeVisible();
- await section.screenshot({path:"/private/tmp/haris-task8-owner-lifecycle.png",style:"header, nextjs-portal, .skip-link { visibility: hidden }"}); await page.setViewportSize({width:390,height:844}); await section.screenshot({path:"/private/tmp/haris-task8-owner-mobile.png",style:"header, nextjs-portal, .skip-link { visibility: hidden }"}); expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await section.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task8-owner-lifecycle.png`,style:"header, nextjs-portal, .skip-link { visibility: hidden }"}); await page.setViewportSize({width:390,height:844}); await section.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task8-owner-mobile.png`,style:"header, nextjs-portal, .skip-link { visibility: hidden }"}); expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  const rows = (await (await page.request.get(`/api/v1/payroll/periods/${f.periodId}/payments`)).json()).data; const paid = rows.find((r:{status:string})=>r.status==="paid"); const cancelled = rows.find((r:{payment_history:unknown[];status:string})=>r.status==="unprepared"&&r.payment_history.length).payment_history[0];
  expect((await page.request.get(`/api/v1/payroll/payments/${paid.payment.id}/qr`)).status()).toBe(409); expect((await page.request.get(`/api/v1/payroll/payments/${cancelled.id}/qr`)).status()).toBe(404);
  const summary = (await (await page.request.get(`/api/v1/payroll/periods/${f.periodId}/payments/summary`)).json()).data; expect(summary.totals).toMatchObject({employee_count:4,payable_count:3,paid_count:2,total_payable:"175.03",total_paid:"150.03",total_outstanding:"25.00"}); expect(summary.branches[0].complete).toBe(true);

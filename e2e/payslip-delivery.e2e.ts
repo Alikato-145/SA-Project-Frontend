@@ -1,3 +1,4 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -22,7 +23,7 @@ async function login(page: Page, username: string) {
   await page.goto("/login");
   await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
-  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/);
   const actor = (await (await page.request.get("/api/v1/auth/me")).json()).data as AuthenticatedActor;
   return actor;

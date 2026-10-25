@@ -1,3 +1,4 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 
 test("supervisor approves three days with corrected type and manager directly approves four days", async ({ page, browser, baseURL }) => {
@@ -7,7 +8,7 @@ test("supervisor approves three days with corrected type and manager directly ap
     await target.goto(`${baseURL}/login`);
     await target.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
     await target.getByLabel("รหัสผ่าน", { exact: true }).fill(password);
-    await target.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+    await paceLogin(); await target.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
     await expect(target).not.toHaveURL(/\/login$/);
   };
   await signIn(page, "admin", "password");

@@ -1,3 +1,4 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect } from "@playwright/test";
 
 test("mid-month transfer, salary and weekly holiday changes retain dated payroll and all OT rates", async ({ page, baseURL }) => {
@@ -5,7 +6,7 @@ test("mid-month transfer, salary and weekly holiday changes retain dated payroll
   await page.goto("/login");
   await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("admin");
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
-  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/);
   const origin = new URL(baseURL!).origin;
   const create = async (path: string, data: unknown) => {

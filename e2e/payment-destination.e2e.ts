@@ -1,10 +1,11 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 
 async function login(page: Page, username: string) {
   await page.goto("/login");
   await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
-  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/);
 }
 
@@ -55,9 +56,9 @@ test("HR/OWNER destinations stay separate from contact and employee/manager cann
   await page.reload();
   await expect(page.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true })).toHaveValue("cash");
   await expect(page.getByLabel("หมายเลขรับเงินพร้อมเพย์", { exact: true })).toHaveValue("");
-  await page.screenshot({ path: "/private/tmp/haris-task6-owner-payment.png", fullPage: true });
+  await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task6-owner-payment.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "/private/tmp/haris-task6-owner-payment-mobile.png", fullPage: true });
+  await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task6-owner-payment-mobile.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await employeeContext.close(); await managerContext.close();
 });
@@ -92,5 +93,5 @@ test("OWNER creates an effective membership successor through employment UI", as
   expect(assignments[0]).toMatchObject({ effective_from: "2096-01-01", effective_to: "2096-01-15", is_social_security_member: true });
   expect(assignments[1]).toMatchObject({ effective_from: "2096-01-16", effective_to: null, is_social_security_member: false });
   await expect(page.getByRole("definition").filter({ hasText: "ไม่เป็นสมาชิก" })).toBeVisible();
-  await page.screenshot({ path: "/private/tmp/haris-task6-owner-membership.png", fullPage: true });
+  await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task6-owner-membership.png`, fullPage: true });
 });

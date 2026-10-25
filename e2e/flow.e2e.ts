@@ -1,9 +1,10 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 const login = async (page: Page, username: string) => {
   await page.goto("/login");
   await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
-  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/);
 };
 const rows = (body: { data: unknown }) => Array.isArray(body.data) ? body.data : (body.data as { items: unknown[] }).items;
@@ -136,7 +137,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await employeePage.goto(`${baseURL}/login`);
   await employeePage.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(`uat_${suffix.toLowerCase()}`);
   await employeePage.getByLabel("รหัสผ่าน", { exact: true }).fill(onboard.temporary_password);
-  await employeePage.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await employeePage.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(employeePage.getByRole("heading", { name: "บัญชีนี้ยังไม่ได้รับบทบาท", exact: true })).toBeVisible();
   await mutate(`/accounts/${onboard.account_id}/roles`, { role_code: "EMPLOYEE", reason: "ทดสอบสิทธิ์ครบวงจร" });
   await employeePage.reload();
@@ -186,7 +187,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await otherPage.goto(`${baseURL}/login`);
   await otherPage.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("employee");
   await otherPage.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
-  await otherPage.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await otherPage.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(otherPage).not.toHaveURL(/\/login$/);
   expect((await otherPage.request.get(`${baseURL}/api/v1/attachments/${attachment.id}/download`)).status()).toBe(403);
   await otherContext.close();
@@ -267,6 +268,10 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
     const exported = await page.request.get(`/api/v1/reports/${kind}.csv?period_id=${period.id}`);
     expect(exported.status(), await exported.text()).toBe(200);
     expect(exported.headers()["content-type"]).toContain("text/csv");
+    const csv = await exported.text();
+    expect(csv).toContain(kind === "bank-transfer" ? '"2752.91"' : '"2600.00","130.00"');
+    if (kind === "bank-transfer") expect(csv).toContain('"0000000000"');
+    await test.info().attach(`${kind}-frozen.csv`, { body: Buffer.from(csv), contentType: "text/csv" });
   }
   const summary = await page.request.get(`/api/v1/reports/summary?period_id=${period.id}`);
   expect(summary.status(), await summary.text()).toBe(200);
@@ -518,7 +523,7 @@ test("new account receives named branch scope, changes password and loses access
   await manager.goto(`${baseURL}/login`);
   await manager.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
   await manager.getByLabel("รหัสผ่าน", { exact: true }).fill(password);
-  await manager.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await manager.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(manager).not.toHaveURL(/\/login$/);
   const me = (await (await manager.request.get("/api/v1/auth/me")).json()).data;
   expect(me.grants).toHaveLength(1); expect(me.grants[0]).toMatchObject({ role_code: "BRANCH_MANAGER", scope: "branch" });
@@ -542,7 +547,7 @@ test("new account receives named branch scope, changes password and loses access
   await manager.goto(`${baseURL}/login`);
   await manager.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
   await manager.getByLabel("รหัสผ่าน", { exact: true }).fill(replacement);
-  await manager.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await manager.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(manager).not.toHaveURL(/\/login$/);
   const origin = new URL(baseURL!).origin;
   const disable = await page.request.patch(`/api/v1/accounts/${accountId}/status`, { data: { status: "disabled", reason: "ทดสอบระงับ session บัญชี" }, headers: { origin } });

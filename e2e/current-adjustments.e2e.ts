@@ -1,15 +1,16 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 
 const login = async (page: Page, username: string) => {
   await page.goto("/login");
   await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(username);
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
-  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/);
 };
 
 for (const username of ["admin", "hr"]) {
-  test(`${username} requests and approves current adjustments through UI with persistent single application`, async ({ page, baseURL }) => {
+  test(`${username} creates period, adjusts, previews and locks through UI with persistent single application`, async ({ page, baseURL }) => {
     test.setTimeout(120000);
     await login(page, username);
     const origin = new URL(baseURL!).origin;
@@ -35,8 +36,15 @@ for (const username of ["admin", "hr"]) {
       await create("/payroll/configurations", { shop_id: shop.id, config_key, numeric_value, unit, effective_from: "2026-09-30" });
     }
     await create("/work-day-records", { employee_id: employeeId, branch_id: branch.id, work_date: "2026-09-30", status: "present", clock_in_at: "2026-09-30T02:00:00Z", clock_out_at: "2026-09-30T11:00:00Z", late_minutes: 0, is_deductible: false });
-    const period = await create("/payroll/periods", { shop_id: shop.id, period_year: 2026, period_month: 9, start_date: "2026-09-01", end_date: "2026-09-30" });
     await page.goto("/payroll");
+    await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(shop.id);
+    await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
+    await page.getByLabel("เดือน", { exact: true }).fill("2026-09");
+    const opened = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/payroll/periods" && response.request().method() === "POST");
+    await page.getByRole("button", { name: "เปิดรอบ", exact: true }).click();
+    const openedResponse = await opened; expect(openedResponse.ok(), await openedResponse.text()).toBe(true);
+    const period = (await openedResponse.json()).data;
+    await page.reload();
     await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(shop.id);
     await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
     const current = page.getByRole("region", { name: "รายการเพิ่มและหักในงวดปัจจุบัน", exact: true });
@@ -64,7 +72,10 @@ for (const username of ["admin", "hr"]) {
       expect(preview.records[0].net_pay).toBe("125.01");
       expect(preview.records[0].items.filter((item: { source_table: string }) => item.source_table === "payroll_adjustments")).toHaveLength(1);
     }
-    await create(`/payroll/periods/${period.id}/lock`, {});
+    const locked = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/payroll/periods/${period.id}/lock` && response.request().method() === "POST");
+    page.once("dialog", dialog => dialog.accept());
+    await page.getByRole("button", { name: "ล็อกรอบ", exact: true }).click();
+    const lockedResponse = await locked; expect(lockedResponse.ok(), await lockedResponse.text()).toBe(true);
     await page.reload();
     const persistent = await page.request.get(`/api/v1/payroll/periods/${period.id}`);
     expect((await persistent.json()).data.records[0].net_pay).toBe("125.01");
@@ -75,7 +86,7 @@ for (const username of ["admin", "hr"]) {
     await current.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(shop.id);
     await current.getByRole("combobox", { name: "งวดเงินเดือน", exact: true }).selectOption(period.id);
     await expect(current.getByRole("button", { name: "ส่งรายการในงวดนี้", exact: true })).toBeDisabled();
-    await page.screenshot({ path: `../docs/superpowers/reports/current-adjustments-${username}.png`, fullPage: true });
+    await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "../docs/superpowers/reports"}/current-adjustments-${username}.png`, fullPage: true });
   });
 }
 

@@ -1,3 +1,4 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import jsQR from "jsqr";
@@ -15,7 +16,7 @@ type Fixture = {
   }[];
 };
 const fixture = () => JSON.parse(readFileSync(process.env.PAYMENT_FIXTURE_FILE ?? "/private/tmp/haris-task7-browser-fixture.json", "utf8")) as Fixture;
-const login = async (page: Page, user: string) => { await page.goto("/login"); await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(user); await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password"); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click(); await expect(page).not.toHaveURL(/\/login$/); };
+const login = async (page: Page, user: string) => { await page.goto("/login"); await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(user); await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password"); await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click(); await expect(page).not.toHaveURL(/\/login$/); };
 const open = async (page: Page, f: Fixture) => { await page.goto("/payroll"); await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(f.shopId); await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click(); await page.getByRole("button").filter({ hasText: "10/2095" }).click(); await expect(page.getByRole("heading", { name: "เตรียมจ่ายเงินเดือนตามสาขา", exact: true })).toBeVisible(); };
 // Independent implementation: no production encoder/checksum imported into browser evidence.
 const checksum = (text: string) => { let sum = 65535; for (const byte of new TextEncoder().encode(text)) {
@@ -64,8 +65,8 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
   const qrResponse = await page.request.get(`/api/v1/payroll/payments/${saved.payment.id}/qr`);
   expect(qrResponse.headers()["cache-control"]).toBe("private, no-store");
   expect(JSON.stringify(rows)).not.toContain("ciphertext");
-  await page.screenshot({ path: "/private/tmp/haris-task7-hr-groups-qr.png", fullPage: true });
-  await section.screenshot({ path: "/private/tmp/haris-task7-hr-payment-panel.png", style: "header { visibility: hidden }" });
+  await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task7-hr-groups-qr.png`, fullPage: true });
+  await section.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task7-hr-payment-panel.png`, style: "header { visibility: hidden }" });
   await page.goto(`/employees/${transfers[0]!.id}`);
   await page.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true }).selectOption("transfer");
   await page.getByLabel("หมายเลขรับเงินพร้อมเพย์", { exact: true }).fill("0899999999");
@@ -92,11 +93,11 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
   await open(page, f);
   await section.getByRole("button", { name: `แสดง QR ${transfers[1]!.code}`, exact: true }).click();
   expect(await decode(page, "9999999999.99")).toBe(maximum);
-  await page.screenshot({ path: "/private/tmp/haris-task7-owner-groups-qr.png", fullPage: true });
-  await section.screenshot({ path: "/private/tmp/haris-task7-owner-payment-panel.png", style: "header { visibility: hidden }" });
+  await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task7-owner-groups-qr.png`, fullPage: true });
+  await section.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task7-owner-payment-panel.png`, style: "header { visibility: hidden }" });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "/private/tmp/haris-task7-owner-groups-qr-mobile.png", fullPage: true });
-  await page.getByRole("region", { name: "QR รับเงินเดือน", exact: true }).screenshot({ path: "/private/tmp/haris-task7-owner-qr-mobile.png" });
+  await page.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task7-owner-groups-qr-mobile.png`, fullPage: true });
+  await page.getByRole("region", { name: "QR รับเงินเดือน", exact: true }).screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/haris-task7-owner-qr-mobile.png` });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const prepared = (await (await page.request.get(`/api/v1/payroll/periods/${f.periodId}/payments`)).json()).data;
   expect(prepared.filter((r: {

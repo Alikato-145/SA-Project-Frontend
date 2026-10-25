@@ -1,5 +1,6 @@
+import { paceLogin } from "./login-pacing";
 import { test, expect, type Page } from "@playwright/test";
-const login=async(page:Page,username:string)=>{await page.goto("/login");await page.getByLabel("ชื่อผู้ใช้",{exact:true}).fill(username);await page.getByLabel("รหัสผ่าน",{exact:true}).fill("password");await page.getByRole("button",{name:"เข้าสู่พื้นที่ทำงาน",exact:true}).click();await expect(page).not.toHaveURL(/\/login$/);};
+const login=async(page:Page,username:string)=>{await page.goto("/login");await page.getByLabel("ชื่อผู้ใช้",{exact:true}).fill(username);await page.getByLabel("รหัสผ่าน",{exact:true}).fill("password");await paceLogin(); await page.getByRole("button",{name:"เข้าสู่พื้นที่ทำงาน",exact:true}).click();await expect(page).not.toHaveURL(/\/login$/);};
 test("employee submits own loan request and reloads pending",async({page})=>{
  await login(page,"employee");await page.goto("/finance");
  const requests=page.getByRole("region",{name:"คำขอเงินกู้",exact:true});await expect(requests).toBeVisible();
@@ -22,10 +23,10 @@ for(const [finance,decision] of [["hr","approve"],["admin","reject"]] as const) 
     const duplicate=await reviewer.request.post(`/api/v1/loan-requests/${row.id}/approve`,{data:{first_due_month:"2097-01-01"},headers:{origin:new URL(baseURL!).origin}});expect(duplicate.status()).toBe(409);
     const listed=(await (await reviewer.request.get(`/api/v1/loans?employee_id=${own.id}`)).json()).data;const approved=(await (await reviewer.request.get(`/api/v1/loan-requests?employee_id=${own.id}`)).json()).data.find((r:{id:string})=>r.id===row.id);const loan=listed.find((r:{id:string})=>r.id===approved.loan_id);expect(loan.principal_amount).toBe("100.01");expect(loan.installments.map((r:{amount:string})=>r.amount).sort()).toEqual(["33.33","33.34","33.34"]);
    } else {await record.getByLabel("เหตุผลที่ไม่อนุมัติ",{exact:true}).fill("ขอให้ส่งเอกสารเพิ่มเติม");await record.getByRole("button",{name:"ไม่อนุมัติเงินกู้",exact:true}).click();await expect(record).toContainText("ขอให้ส่งเอกสารเพิ่มเติม");}
-   await reviewer.screenshot({path:`../docs/superpowers/reports/loan-requests-${finance}.png`,fullPage:true});
+   await reviewer.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "../docs/superpowers/reports"}/loan-requests-${finance}.png`,fullPage:true});
    await page.reload();await page.getByRole("button",{name:"โหลดข้อมูลการเงิน",exact:true}).click();const ownRecord=page.getByTestId(`loan-request-${row.id}`);await expect(ownRecord).toContainText(decision==="approve"?"อนุมัติแล้ว ดูตารางผ่อนเงินกู้":"ขอให้ส่งเอกสารเพิ่มเติม");
    if(decision==="approve")await expect(page.getByText("งวด 1: 2097-01-01",{exact:false}).first()).toBeVisible();
-   await page.screenshot({path:`../docs/superpowers/reports/loan-requests-employee-${decision}.png`,fullPage:true});
+   await page.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "../docs/superpowers/reports"}/loan-requests-employee-${decision}.png`,fullPage:true});
   } finally {await context.close();}
  });
 }
