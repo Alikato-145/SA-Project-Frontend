@@ -54,7 +54,7 @@ export const routePolicyFor = (pathname: string): DashboardRoutePolicy => {
   if (pathname === "/employees" || pathname.startsWith("/employees/"))
     return { known: true, roles: allRoles, state: "released" };
   if (pathname === "/attendance")
-    return { known: true, roles: ["OWNER", "HR", "BRANCH_MANAGER", "SUPERVISOR"], state: "released" };
+    return { known: true, roles: allRoles, state: "released" };
   if (pathname === "/schedules")
     return { known: true, roles: ["OWNER", "HR", "BRANCH_MANAGER"], state: "released" };
   if (pathname === "/leave" || pathname === "/overtime")
