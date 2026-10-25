@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PayrollConfigurationSuccessor } from "@/components/payroll-configuration-successor";
+import { PayrollPayments } from "@/components/payroll-payments";
 import { PayrollAdjustments } from "@/components/payroll-adjustments";
 import { PageHeader } from "@/components/workspace-ui";
 import { missingConfigurationCoverage } from "@/lib/payroll/configuration-coverage";
@@ -236,6 +237,7 @@ export default function PayrollPage() {
       </div>
     </section>
 
+    {canMutate === true && selected?.status === "locked" && <PayrollPayments key={selected.id} periodId={selected.id} branches={branches} />}
     {canMutate === true && <PayrollAdjustments />}
 
     <details id="configuration-readiness" className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ความพร้อมของค่าคำนวณ ({configurations.length})</summary><div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]"><div className="bg-[var(--accent-soft)] p-4 text-sm"><strong className="block">ก่อน preview/lock</strong><p className="mt-2 leading-6">{!selected ? "เลือกงวดเพื่อตรวจช่วงวันที่" : coverage.length ? coverage.map(({ branch, missing }) => `${branch.name}: ${missing.map((item) => `${configurationLabel(item.key)} (เริ่มขาด ${item.date})`).join(" · ")}`).join("; ") : "ค่าคำนวณครอบคลุมทุกวันของงวดในสาขาที่แสดงแล้ว"}</p>{shops.length === 0 ? <Link href="/settings" className="mt-3 inline-block font-semibold underline underline-offset-4">ไปเพิ่มร้าน</Link> : null}</div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? branches.find((branch) => branch.id === row.branch_id)?.name ?? "สาขาตามประวัติ" : "ทั้งร้าน"}</td><td>{row.numeric_value} {unitLabel(row.unit)}</td><td>{row.effective_from} ถึง {row.effective_to ?? "ปัจจุบัน"}{canMutate && !archivedShop && <PayrollConfigurationSuccessor configuration={row} onSaved={() => { void loadWorkspace(); }} />}</td></tr>)}</tbody></table></div></div></details>
