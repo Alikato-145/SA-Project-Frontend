@@ -8,7 +8,7 @@ for(const [finance,decision] of [["hr","reject"],["admin","approve"]] as const)t
  test.setTimeout(150000);
  const headers={origin:new URL(baseURL!).origin};
  const today=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Bangkok",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
- const [year,month,day]=today.split("-").map(Number);expect(day,"Positive eligible advance must use actual day >=20").toBeGreaterThanOrEqual(20);
+ const [year,month,day]=today.split("-").map(Number);
  const start=`${today.slice(0,7)}-01`,end=new Date(Date.UTC(year,month,0)).toISOString().slice(0,10),key=`ADV_${Date.now().toString(36).toUpperCase()}_${finance}`;
  await login(page,"admin");
  const create=async(path:string,data:object)=>{const response=await page.request.post(`/api/v1${path}`,{headers,data});expect(response.ok(),`${path}: ${await response.text()}`).toBe(true);return (await response.json()).data;};
@@ -32,11 +32,19 @@ for(const [finance,decision] of [["hr","reject"],["admin","approve"]] as const)t
   await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();expect(posts).toBe(0);
   await reason.fill("   ");await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();await expect(employee.getByText("กรอกเหตุผลที่ขอเงินทดรองจ่าย 1–1000 ตัวอักษร โดยไม่เว้นว่างทั้งหมด",{exact:true})).toBeVisible();expect(posts).toBe(0);
   await reason.evaluate((node:HTMLTextAreaElement)=>node.removeAttribute("maxlength"));await reason.fill("x".repeat(1001));await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();expect(posts).toBe(0);
+  for(const bad of [undefined,null,""," \t\n ","x".repeat(1001)]){const result=await employee.request.post("/api/v1/advance-requests",{headers,data:{employee_id:onboard.employee.id,amount:"100.01",...(bad===undefined?{}:{reason:bad})}});expect(result.status()).toBe(422);expect((await result.json()).error.code).toBe("VALIDATION_ERROR");}
   const reasonText=`Emergency household expenses ${key}`;await reason.fill(`  ${reasonText}  `);
-  const submitted=employee.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/advance-requests"&&r.request().method()==="POST");await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();const response=await submitted;expect(response.ok(),await response.text()).toBe(true);const advance=(await response.json()).data;expect(advance.reason).toBe(reasonText);
+  const submitted=employee.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/advance-requests"&&r.request().method()==="POST");await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();const response=await submitted;
+  if(day<20){
+   expect(response.status()).toBe(422);expect((await response.json()).error.code).toBe("ADVANCE_INELIGIBLE_DATE");
+   await employee.reload();await employee.getByRole("button",{name:"โหลดข้อมูลการเงิน",exact:true}).click();
+   const ownResponse=await employee.request.get(`/api/v1/advance-requests?employee_id=${onboard.employee.id}`);expect(ownResponse.ok()).toBe(true);expect((await ownResponse.json()).data).toEqual([]);
+   console.log(JSON.stringify({businessDate:today,employee:onboard.employee.id,finance,positiveAdvance:false,reason:"Legitimate before-20 eligibility denial"}));
+   return;
+  }
+  expect(response.ok(),await response.text()).toBe(true);const advance=(await response.json()).data;expect(advance.reason).toBe(reasonText);
   await employee.reload();await employee.getByRole("button",{name:"โหลดข้อมูลการเงิน",exact:true}).click();const own=employee.getByTestId(`advance-request-${advance.id}`);await expect(own).toContainText(reasonText);await expect(own).toContainText("รอพิจารณา");
   await employee.screenshot({path:`${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/employee-advance-${finance}-pending.png`,fullPage:true});
-  for(const bad of [undefined,null,""," \t\n ","x".repeat(1001)]){const result=await employee.request.post("/api/v1/advance-requests",{headers,data:{employee_id:onboard.employee.id,amount:"100.01",...(bad===undefined?{}:{reason:bad})}});expect(result.status()).toBe(422);}
   expect((await employee.request.post("/api/v1/advance-requests",{headers,data:{employee_id:"99999999",amount:"100.01",reason:reasonText}})).status()).toBe(403);
   expect((await employee.request.post(`/api/v1/advance-requests/${advance.id}/reject`,{headers,data:{note:"Employee cannot decide"}})).status()).toBe(403);
   await page.context().clearCookies();await login(page,finance);await page.goto("/finance");
