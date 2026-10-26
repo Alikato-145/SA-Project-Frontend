@@ -67,6 +67,11 @@ for (const username of ["admin", "hr"]) {
     expect((await pendingLock.json()).error.code).toBe("PAYROLL_APPROVALS_PENDING");
     await current.getByRole("button", { name: "อนุมัติ", exact: true }).click();
     await expect(current.getByText("อนุมัติแล้ว คำนวณงวดนี้เพื่อนำรายการไปใช้", { exact: true })).toBeVisible();
+    const uiPreview = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/payroll/periods/${period.id}/preview` && response.request().method() === "POST");
+    await page.getByRole("button", { name: "คำนวณตัวอย่าง", exact: true }).click();
+    const uiPreviewResponse = await uiPreview;
+    expect(uiPreviewResponse.ok(), await uiPreviewResponse.text()).toBe(true);
+    expect((await uiPreviewResponse.json()).data.records[0].net_pay).toBe("125.01");
     for (let repeat = 0; repeat < 2; repeat++) {
       const preview = await create(`/payroll/periods/${period.id}/preview`, {});
       expect(preview.records[0].net_pay).toBe("125.01");
