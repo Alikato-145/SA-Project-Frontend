@@ -14,6 +14,14 @@ export function EmployeePicker({ value, onChange, className, required = false }:
   const [options, setOptions] = useState<Employee[]>([]);
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectionError, setSelectionError] = useState("");
+
+  useEffect(() => {
+    if (!value) return;
+    let current = true;
+    void employeeApi.get(value).then((employee) => { if (current) { setQuery(label(employee)); setSelectionError(""); } }).catch(() => { if (current) setSelectionError("ไม่สามารถโหลดชื่อพนักงานจากลิงก์ได้ กรุณาเลือกพนักงานอีกครั้ง"); });
+    return () => { current = false; };
+  }, [value]);
 
   useEffect(() => {
     if (!active) return;
@@ -34,11 +42,12 @@ export function EmployeePicker({ value, onChange, className, required = false }:
       onChange={(event) => {
         const next = event.target.value;
         setQuery(next);
+        setSelectionError("");
         const selected = options.find((employee) => label(employee) === next);
         onChange(selected?.id ?? "");
       }} />
     <datalist id={listId}>{options.map((employee) => <option key={employee.id} value={label(employee)} />)}</datalist>
-    <p className="mt-1.5 text-xs leading-5 text-[var(--muted)]" aria-live="polite">{loading ? "กำลังค้นหารายชื่อ…" : value ? "เลือกพนักงานแล้ว" : active && query && options.length === 0 ? "ไม่พบพนักงานที่ค้นหา" : "พิมพ์ชื่อจริงหรือรหัสพนักงาน แล้วเลือกจากรายการ"}</p>
+    <p className="mt-1.5 text-xs leading-5 text-[var(--muted)]" aria-live="polite">{selectionError || (loading ? "กำลังค้นหารายชื่อ…" : value ? "เลือกพนักงานแล้ว" : active && query && options.length === 0 ? "ไม่พบพนักงานที่ค้นหา" : "พิมพ์ชื่อจริงหรือรหัสพนักงาน แล้วเลือกจากรายการ")}</p>
   </div>;
 }
 

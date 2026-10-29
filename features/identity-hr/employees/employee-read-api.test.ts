@@ -96,3 +96,19 @@ test("payment destination uses a dedicated contract without contact phone", asyn
     expect(JSON.parse(String(call?.body))).toEqual({ payment_method: "transfer", promptpay_phone: "0812345678" });
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test("employee list sends branch and department filters together with search and status", async () => {
+  const originalFetch = globalThis.fetch;
+  let url = "";
+  globalThis.fetch = (async (input) => {
+    url = String(input);
+    return new Response(JSON.stringify({ data: [], page: 1, page_size: 20, total: 0, request_id: "test" }));
+  }) as typeof fetch;
+  try {
+    await employeeReadApi.list({ page: 1, search: "name", status: "active", branchId: "12", departmentId: "34" } as Parameters<typeof employeeReadApi.list>[0]);
+    expect(url).toContain("branch_id=12");
+    expect(url).toContain("department_id=34");
+    expect(url).toContain("search=name");
+    expect(url).toContain("status=active");
+  } finally { globalThis.fetch = originalFetch; }
+});

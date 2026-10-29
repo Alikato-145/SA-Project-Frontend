@@ -15,10 +15,10 @@ export const organizationApi = {
   listDepartments: (branchId: string, signal?: AbortSignal) => historyChoices<{ id: string; branch_id: string; code: string; name: string }>(`/v1/departments?branch_id=${encodeURIComponent(branchId)}`, signal),
   listActiveShops: () => apiRequestAll<Shop>("/v1/shops?is_active=true", { credentials: "include" }),
   listActiveBranches: (shopId: string) => apiRequestAll<Branch>(`/v1/branches?is_active=true&shop_id=${encodeURIComponent(shopId)}`, { credentials: "include" }),
-  createShop: (input: Pick<Shop, "code" | "name">) => request<Shop>("/v1/shops", {
+  createShop: (input: Pick<Shop, "name">) => request<Shop>("/v1/shops", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
   }),
-  createBranch: (input: Pick<Branch, "shop_id" | "code" | "name">) => request<Branch>("/v1/branches", {
+  createBranch: (input: Pick<Branch, "shop_id" | "name">) => request<Branch>("/v1/branches", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
   }),
   listAccounts: (page = 1, pageSize = 20) => apiRequestEnvelope<{ items: AccountSummary[] }>(`/v1/accounts/?page=${page}&page_size=${pageSize}`, { credentials: "include" }),

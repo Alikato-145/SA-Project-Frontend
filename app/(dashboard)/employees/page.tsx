@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { ApiClientError } from "@/lib/api/client";
 import { authApi } from "@/lib/auth/auth-api";
+import { organizationApi, type Branch } from "@/lib/organization/organization-api";
 import type {
   EmployeeStatus,
   EmployeeSummary,
@@ -27,6 +28,11 @@ export default function EmployeesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | EmployeeStatus>("all");
+  const [branchId, setBranchId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; branch_id: string; code: string; name: string }[]>([]);
+  const [choicesError, setChoicesError] = useState("");
   const [page, setPage] = useState(1);
   const [refresh, setRefresh] = useState(0);
   const [rows, setRows] = useState<EmployeeSummary[]>([]);
@@ -40,7 +46,7 @@ export default function EmployeesPage() {
     let active = true;
     authApi
       .current()
-      .then((actor) => {
+      .then(async (actor) => {
         if (active)
           setCanManage(
             actor.grants.some(
@@ -49,6 +55,14 @@ export default function EmployeesPage() {
                 (grant.scope === "branch" && grant.role_code === "BRANCH_MANAGER" && grant.branch_id !== null),
             ),
           );
+        if (actor.grants.some(grant => grant.scope === "all" || grant.scope === "branch" || grant.scope === "department")) {
+          try {
+            const shops = await organizationApi.listShops();
+            const available = (await Promise.all(shops.map(shop => organizationApi.listBranches(shop.id)))).flat();
+            const availableDepartments = (await Promise.all(available.map(branch => organizationApi.listDepartments(branch.id)))).flat();
+            if (active) { setBranches(available); setDepartments(availableDepartments); }
+          } catch { if (active) setChoicesError("โหลดรายชื่อสาขาและแผนกไม่สำเร็จ กรุณาโหลดหน้าใหม่"); }
+        }
       })
       .catch(() => {
         if (active) setCanManage(false);
@@ -61,7 +75,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     const controller = new AbortController();
     employeeReadApi
-      .list({ page, search, status }, controller.signal)
+      .list({ page, search, status, branchId, departmentId }, controller.signal)
       .then((result) => {
         setRows(result.data);
         setTotal(result.total);
@@ -79,7 +93,7 @@ export default function EmployeesPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [page, refresh, search, status]);
+  }, [page, refresh, search, status, branchId, departmentId]);
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -148,6 +162,20 @@ export default function EmployeesPage() {
                   ))}
                 </select>
               </Field>
+              <Field label="สาขา">
+                <select className={styles.select} aria-label="สาขา" value={branchId} onChange={(event) => { setLoading(true); setPage(1); setBranchId(event.target.value); setDepartmentId(""); }}>
+                  <option value="">ทุกสาขาที่มีสิทธิ์</option>
+                  {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}
+                  {branches.length === 0 && [...new Set(rows.map(row => row.branch_id).filter((id): id is string => id !== null))].map(id => <option key={id} value={id}>สาขา #{id}</option>)}
+                </select>
+              </Field>
+              <Field label="แผนก">
+                <select className={styles.select} aria-label="แผนก" value={departmentId} onChange={(event) => { setLoading(true); setPage(1); setDepartmentId(event.target.value); }}>
+                  <option value="">ทุกแผนกที่มีสิทธิ์</option>
+                  {departments.filter(department => !branchId || department.branch_id === branchId).map(department => <option key={department.id} value={department.id}>{department.code} · {department.name}{!branchId ? ` · ${branches.find(branch => branch.id === department.branch_id)?.name ?? `สาขา #${department.branch_id}`}` : ""}</option>)}
+                  {departments.length === 0 && [...new Set(rows.filter(row => !branchId || row.branch_id === branchId).map(row => row.department_id).filter((id): id is string => id !== null))].map(id => <option key={id} value={id}>แผนก #{id}</option>)}
+                </select>
+              </Field>
               <button className={styles.button} type="submit">
                 ค้นหา
               </button>
@@ -162,6 +190,7 @@ export default function EmployeesPage() {
                 โหลดใหม่
               </button>
             </form>
+            {choicesError && <p role="alert" className={styles.muted}>{choicesError}</p>}
             {loading ? (
               <RequestState
                 kind="loading"

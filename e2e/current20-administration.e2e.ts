@@ -42,7 +42,6 @@ for (const username of ["hr", "admin"]) test(`UC02/03/04/05/06/13/20 ${username}
     await page.getByLabel("ค้นหารหัสหรือชื่อ", { exact: true }).fill(key);
     if (parent) await page.locator("section").filter({ has: page.getByRole("heading", { name: "โครงสร้างองค์กร", exact: true }) }).getByRole("combobox", { name: parentLabel, exact: true }).selectOption(ids[parent]);
     const form = page.locator("form").filter({ has: page.getByRole("button", { name: `เพิ่ม${label}`, exact: true }) });
-    await form.getByLabel("รหัส", { exact: true }).fill(key);
     await form.getByLabel("ชื่อ", { exact: true }).fill(`${label} ${key}`);
     if (parent) await form.getByRole("combobox", { name: parentLabel, exact: true }).selectOption(ids[parent]);
     const created = await saved(page, `/${kind}`, "POST", () => form.getByRole("button", { name: `เพิ่ม${label}`, exact: true }).click());
@@ -116,7 +115,6 @@ for (const username of ["hr", "admin"]) test(`UC02/03/04/05/06/13/20 ${username}
   await page.goto("/schedules");
   await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(ids.shops);
   await page.getByRole("combobox", { name: "สาขา", exact: true }).selectOption(ids.branches);
-  await page.getByLabel("วันที่ตรวจตาราง", { exact: true }).fill("2036-01-01");
   await page.getByRole("button", { name: "โหลดตารางและวันหยุด", exact: true }).click();
   await page.getByLabel("เวลาเริ่มงาน", { exact: true }).fill("09:00");
   await page.getByLabel("เวลาเลิกงาน", { exact: true }).fill("18:00");
@@ -133,7 +131,6 @@ for (const username of ["hr", "admin"]) test(`UC02/03/04/05/06/13/20 ${username}
   await page.reload();
   await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(ids.shops);
   await page.getByRole("combobox", { name: "สาขา", exact: true }).selectOption(ids.branches);
-  await page.getByLabel("วันที่ตรวจตาราง", { exact: true }).fill("2036-01-01");
   await page.getByRole("button", { name: "โหลดตารางและวันหยุด", exact: true }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "2036-01-01 – 2036-01-31" })).toBeVisible();
   await expect(page.getByRole("listitem").filter({ hasText: key })).toBeVisible();
@@ -141,12 +138,12 @@ for (const username of ["hr", "admin"]) test(`UC02/03/04/05/06/13/20 ${username}
   await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(ids.shops);
   await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
   const configForm = page.locator("form").filter({ has: page.getByRole("button", { name: "บันทึกค่าคำนวณ", exact: true }) });
-  await configForm.getByLabel("ค่า", { exact: true }).fill("26");
+  await configForm.getByLabel(/^ค่า \(/).fill("26");
   await configForm.getByLabel("เริ่มใช้", { exact: true }).fill("2036-01-01");
   const configuration = await saved(page, "/payroll/configurations", "POST", () => configForm.getByRole("button", { name: "บันทึกค่าคำนวณ", exact: true }).click());
   await page.getByText("ความพร้อมของค่าคำนวณ (1)", { exact: true }).click();
   await page.getByText("เปลี่ยนค่าตั้งแต่วันที่", { exact: true }).click();
-  await page.getByLabel("ค่าใหม่", { exact: true }).fill("25");
+  await page.getByLabel(/^ค่าใหม่ \(/).fill("25");
   await page.getByLabel("วันที่เริ่มใช้ค่าใหม่", { exact: true }).fill("2036-02-01");
   await saved(page, `/payroll/configurations/${configuration.id}/successor`, "POST", () => page.getByRole("button", { name: "บันทึกช่วงใหม่", exact: true }).click());
   const configurations = (await (await page.request.get(`/api/v1/payroll/configurations?shop_id=${ids.shops}`)).json()).data;

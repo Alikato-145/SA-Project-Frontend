@@ -1,0 +1,20 @@
+import { expect, test } from "@playwright/test";
+import { paceLogin } from "./login-pacing";
+test("payroll pending overtime opens the matching employee request", async ({ page }) => {
+  test.skip(process.env.PAYROLL_OT_FIXTURE !== "1", "Requires disposable demo fixture with an October pending OT request.");
+  await page.goto("/login");
+  await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("admin");
+  await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
+  await paceLogin();
+  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await page.goto("/payroll");
+  await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption({ label: "DEMO · ร้านตัวอย่าง Haris" });
+  await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
+  await page.getByRole("button", { name: /10\/2026/ }).click();
+  const row = page.getByRole("row").filter({ hasText: "มี OT รอพิจารณา" });
+  await row.getByRole("link", { name: "ไปตรวจคำขอ" }).click();
+  await expect(page).toHaveURL(/overtime\?employee_id=/);
+  await expect(page.getByPlaceholder("ค้นหาชื่อหรือรหัสพนักงาน")).toHaveValue(/Demo Employee/);
+  await expect(page.getByText("OT ตัวอย่าง", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toBeVisible();
+});

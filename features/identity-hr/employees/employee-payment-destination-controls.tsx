@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Field, styles } from "../ui/primitives";
 import { employeeReadApi, type PaymentDestination } from "./employee-read-api";
 
-export function EmployeePaymentDestinationControls({ employeeId, canEdit }: { employeeId: string; canEdit: boolean }) {
+export function EmployeePaymentDestinationControls({ employeeId, canEdit, onSaved }: { employeeId: string; canEdit: boolean; onSaved?: () => void }) {
   const [destination, setDestination] = useState<PaymentDestination | null>(null);
   const [phone, setPhone] = useState("");
   const [method, setMethod] = useState<PaymentDestination["payment_method"]>("cash");
@@ -24,7 +24,7 @@ export function EmployeePaymentDestinationControls({ employeeId, canEdit }: { em
     setBusy(true); setError(""); setNotice("");
     try {
       const saved = await employeeReadApi.savePaymentDestination(employeeId, { payment_method: data.get("payment_method") as PaymentDestination["payment_method"], promptpay_phone: String(data.get("promptpay_phone") ?? "").trim() || null });
-      setDestination(saved); setPhone(saved.promptpay_phone ?? ""); setMethod(saved.payment_method); setNotice("บันทึกช่องทางรับเงินแล้ว");
+      setDestination(saved); setPhone(saved.promptpay_phone ?? ""); setMethod(saved.payment_method); setNotice("บันทึกช่องทางรับเงินแล้ว"); onSaved?.();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
     finally { setBusy(false); }
   };

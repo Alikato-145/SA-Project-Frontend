@@ -1,0 +1,36 @@
+import { test, expect } from "@playwright/test";
+import { paceLogin } from "./login-pacing";
+
+test("schedule lookup uses current Bangkok date without a date input", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-28T17:01:00Z"));
+  await page.goto("/login");
+  await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill("admin");
+  await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
+  await paceLogin();
+  await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
+  await page.goto("/schedules");
+  await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption({ index: 1 });
+  const branch = page.getByRole("combobox", { name: "สาขา", exact: true });
+  await expect(branch).toBeEnabled();
+  await branch.selectOption({ index: 1 });
+  await expect(page.getByLabel("วันที่ตรวจตาราง", { exact: true })).toHaveCount(0);
+  const response = page.waitForResponse(r => r.url().includes("/branch-schedules/applicable?") && r.request().method() === "GET");
+  await page.getByRole("button", { name: "โหลดตารางและวันหยุด", exact: true }).click();
+  expect(new URL((await response).url()).searchParams.get("work_date")).toBe("2026-10-29");
+  await expect(page.getByText(/^ตารางที่มีผลวันนี้:/)).toBeVisible();
+  await page.clock.setFixedTime(new Date("2026-10-29T17:01:00Z"));
+  const nextDay = page.waitForResponse(r => r.url().includes("/branch-schedules/applicable?") && r.request().method() === "GET");
+  await page.getByRole("button", { name: "โหลดตารางและวันหยุด", exact: true }).click();
+  expect(new URL((await nextDay).url()).searchParams.get("work_date")).toBe("2026-10-30");
+  const override = page.locator("form").filter({ has: page.getByRole("heading", { name: "ตารางเฉพาะวัน", exact: true }) });
+  await override.getByLabel("วันที่เปลี่ยนตาราง", { exact: true }).fill("2027-01-15");
+  await override.getByLabel("ปิดสาขา", { exact: true }).check();
+  await override.getByLabel("เหตุผล", { exact: true }).fill("ทดสอบตารางเฉพาะวัน");
+  const saved = page.waitForResponse(r => r.url().includes("/overrides/2027-01-15") && r.request().method() === "PUT");
+  await override.getByRole("button", { name: "บันทึกตารางเฉพาะวัน", exact: true }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(page.getByText("บันทึกและโหลดข้อมูลล่าสุดแล้ว", { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

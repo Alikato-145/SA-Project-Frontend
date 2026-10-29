@@ -7,7 +7,6 @@ export type PositionChoice = Choice & { shop_id: string };
 
 export type OnboardingInput = {
   employee: {
-    employee_code: string;
     national_id: string | null;
     passport_id: string | null;
     first_name: string;
@@ -32,7 +31,7 @@ export type OnboardingInput = {
     is_primary: true;
   };
   weekly_holidays?: { weekday: number; effective_from: string }[];
-  account?: { username: string };
+  account?: { username: string; role_code: "EMPLOYEE" | "SUPERVISOR" | "BRANCH_MANAGER" | "HR" | "OWNER" };
 };
 
 export type OnboardingResult = {

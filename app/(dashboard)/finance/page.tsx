@@ -32,11 +32,16 @@ export default function FinancePage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   useEffect(() => {
+    const linkedEmployee = new URLSearchParams(window.location.search).get("employee_id");
     void authApi.current().then((actor) => {
       const admin = actor.grants.some((grant) => ["HR", "OWNER"].includes(grant.role_code));
       setCanFinance(admin);
       if (!admin) { setEmployeeId(actor.account.employee?.id ?? ""); setEmployeeName(actor.account.employee?.display_name ?? "ยังไม่เชื่อมข้อมูลพนักงาน"); }
-      else void api<{id: string; nameTh: string}[]>("/debt-types").then(setDebtTypes).catch((cause) => setError(cause.message));
+      else {
+        const requested = linkedEmployee;
+        if (requested && /^[1-9]\d*$/.test(requested)) setEmployeeId(requested);
+        void api<{id: string; nameTh: string}[]>("/debt-types").then(setDebtTypes).catch((cause) => setError(cause.message));
+      }
     }).catch(() => setError("ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่"));
   }, []);
   const load = async () => {

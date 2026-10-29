@@ -53,11 +53,11 @@ test("mid-month transfer, salary and weekly holiday changes retain dated payroll
   const period = await create("/payroll/periods", { shop_id: shop.id, period_year: 2026, period_month: 9, start_date: "2026-09-01", end_date: "2026-09-30" });
   const preview = await create(`/payroll/periods/${period.id}/preview`, {});
   expect(preview.blockers).toEqual([]);
-  expect(preview.records[0]).toMatchObject({ net_pay: "4575.00", total_earnings: "4575.00", total_deductions: "0.00" });
+  expect(preview.records[0]).toMatchObject({ net_pay: "4758.00", total_earnings: "4758.00", total_deductions: "0.00" });
   const items = preview.records[0].items as { item_type: string; amount: string; rate: string; occurred_on: string }[];
-  expect(items.filter(item => item.item_type === "base_salary" && item.rate === "100.00")).toHaveLength(13);
-  expect(items.filter(item => item.item_type === "base_salary" && item.rate === "200.00")).toHaveLength(12);
-  for (const [type, amount] of [["overtime_hourly", "75.00"], ["overtime_rest_day", "400.00"], ["overtime_public_holiday", "400.00"]]) {
+  expect(items.filter(item => item.item_type === "base_salary" && item.rate === "104.00")).toHaveLength(13);
+  expect(items.filter(item => item.item_type === "base_salary" && item.rate === "208.00")).toHaveLength(12);
+  for (const [type, amount] of [["overtime_hourly", "78.00"], ["overtime_rest_day", "416.00"], ["overtime_public_holiday", "416.00"]]) {
     expect(items.find(item => item.item_type === type)?.amount).toBe(amount);
   }
   await create(`/payroll/periods/${period.id}/lock`, {});

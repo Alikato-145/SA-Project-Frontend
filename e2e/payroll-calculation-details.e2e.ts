@@ -1,0 +1,27 @@
+import { expect, test } from "@playwright/test";
+import { paceLogin } from "./login-pacing";
+test("payroll separates money from understandable calculation details", async ({ page }) => {
+  test.skip(process.env.MOCK26_OT_FIXTURE !== "1" || !process.env.MOCK26_TEST_PASSWORD, "Requires the disposable MOCK26 payroll fixture.");
+  await page.goto('/login');
+  await page.getByLabel('ชื่อผู้ใช้', { exact: true }).fill('mock26_hr');
+  await page.getByLabel('รหัสผ่าน', { exact: true }).fill(process.env.MOCK26_TEST_PASSWORD!);
+  await paceLogin(); await page.getByRole('button', { name:'เข้าสู่พื้นที่ทำงาน', exact:true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
+  await page.goto('/payroll');
+  await page.getByRole('combobox', { name:'ร้าน', exact:true }).selectOption({label:'MOCK26 · ร้าน Mock Haris 2026'});
+  await page.getByRole('button', { name:'เปิดสมุดงาน', exact:true }).click();
+  await page.getByRole('button', { name:/09\/2026/ }).click();
+  await page.getByRole('button', { name:'คำนวณตัวอย่าง', exact:true }).click();
+  await expect(page.getByText('คำนวณตัวอย่างล่าสุดแล้ว')).toBeVisible();
+  const detailButton = page.getByRole('button', { name:/^ดู \d+ รายการ$/ }).first();
+  const displayedCount = Number((await detailButton.innerText()).match(/\d+/)?.[0]);
+  await detailButton.click();
+  await expect(page.locator('[aria-label="กลุ่มรายได้และรายการหัก"] > details')).toHaveCount(displayedCount);
+  await expect(page.getByRole('heading', { name:'สรุปรายได้และรายการหัก' })).toBeVisible();
+  await page.getByText(/^ข้อมูลที่ใช้คำนวณ \(/).click();
+  await page.getByText(/^ค่าที่ใช้คำนวณ \(/).click();
+  await page.getByText(/^วันทำงานและวันหยุดตามตาราง \(/).click();
+  await expect(page.getByText(/จำนวนวันทำงานมาตรฐาน: \d+ วัน/)).toBeVisible();
+  await expect(page.getByText(/วันทำงานตามกำหนด · สาขา/).first()).toBeVisible();
+  await expect(page.getByText('หลักฐานค่าคำนวณ', { exact:true })).toHaveCount(0);
+});

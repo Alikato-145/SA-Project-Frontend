@@ -16,7 +16,6 @@ import {
 } from "./onboarding-api";
 
 type Draft = {
-  employee_code: string;
   hire_date: string;
   first_name: string;
   last_name: string;
@@ -37,10 +36,10 @@ type Draft = {
   account_number: string;
   account: boolean;
   username: string;
+  role_code: "EMPLOYEE" | "SUPERVISOR" | "BRANCH_MANAGER" | "HR" | "OWNER";
   weekdays: number[];
 };
 const blank: Draft = {
-  employee_code: "",
   hire_date: "",
   first_name: "",
   last_name: "",
@@ -61,6 +60,7 @@ const blank: Draft = {
   account_number: "",
   account: false,
   username: "",
+  role_code: "EMPLOYEE",
   weekdays: [],
 };
 const days = [
@@ -90,6 +90,7 @@ function messageFor(cause: unknown): string {
 export function OnboardingForm() {
   const [actor, setActor] = useState<AuthenticatedActor | null>(null);
   const canAdminister = actor?.grants.some(grant => grant.scope === "all" && (grant.role_code === "HR" || grant.role_code === "OWNER")) ?? false;
+  const isOwner = actor?.grants.some(grant => grant.scope === "all" && grant.role_code === "OWNER") ?? false;
   const branchIds = actor?.grants.filter(grant => grant.scope === "branch" && grant.role_code === "BRANCH_MANAGER").map(grant => grant.branch_id) ?? [];
   useEffect(() => { void authApi.current().then(setActor).catch(() => setActor(null)); }, []);
   const formRef = useRef<HTMLFormElement>(null);
@@ -202,7 +203,6 @@ export function OnboardingForm() {
     try {
       const created = await onboardingApi.onboard({
         employee: {
-          employee_code: draft.employee_code.trim(),
           hire_date: draft.hire_date,
           first_name: draft.first_name.trim(),
           last_name: draft.last_name.trim(),
@@ -239,7 +239,7 @@ export function OnboardingForm() {
             }
           : {}),
         ...(draft.account
-          ? { account: { username: draft.username.trim() } }
+          ? { account: { username: draft.username.trim(), role_code: draft.role_code } }
           : {}),
       });
       setResult(created);
@@ -268,7 +268,7 @@ export function OnboardingForm() {
           </p>
         ) : null}
         <div className={styles.actions}>
-          {result.account_id ? <Link className={styles.button} href={`/accounts/${result.account_id}`}>กำหนดบทบาทบัญชีที่สร้าง</Link> : null}
+          {result.account_id ? <Link className={styles.button} href={`/accounts/${result.account_id}`}>จัดการบทบาทบัญชีที่สร้าง</Link> : null}
           <Link
             className={styles.button}
             href={`/employees/${result.employee.id}`}
@@ -325,16 +325,6 @@ export function OnboardingForm() {
       ) : null}
       {step === 1 ? (
         <div className={styles.formGrid}>
-          <label className={styles.field}>
-            รหัสพนักงาน
-            <input
-              className={styles.input}
-              value={draft.employee_code}
-              onChange={(e) => set("employee_code", e.target.value)}
-              required
-              maxLength={30}
-            />
-          </label>
           <label className={styles.field}>
             วันที่เริ่มงาน
             <input
@@ -634,6 +624,7 @@ export function OnboardingForm() {
               <strong>สร้างบัญชีเข้าใช้งาน</strong>
             </label>
             {draft.account ? (
+              <>
               <label className={styles.field} style={{ marginTop: 16 }}>
                 ชื่อผู้ใช้
                 <input
@@ -646,6 +637,18 @@ export function OnboardingForm() {
                   autoComplete="off"
                 />
               </label>
+              <label className={styles.field} style={{ marginTop: 16 }}>
+                บทบาทเริ่มต้น
+                <select className={styles.select} value={draft.role_code} onChange={(event) => set("role_code", event.target.value as Draft["role_code"])}>
+                  <option value="EMPLOYEE">พนักงาน</option>
+                  <option value="SUPERVISOR">หัวหน้างาน</option>
+                  <option value="BRANCH_MANAGER">ผู้จัดการสาขา</option>
+                  <option value="HR">HR / บัญชี</option>
+                  {isOwner && <option value="OWNER">เจ้าของร้าน</option>}
+                </select>
+              </label>
+              <p className={styles.muted}>บทบาทหัวหน้างานและผู้จัดการสาขาใช้สาขาและแผนกจากข้อมูลการจ้างที่เลือกไว้</p>
+              </>
             ) : null}
             <p className={styles.muted}>
               รหัสผ่านชั่วคราวจะแสดงครั้งเดียวหลังบันทึกสำเร็จ

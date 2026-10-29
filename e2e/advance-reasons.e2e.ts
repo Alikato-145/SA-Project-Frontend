@@ -17,7 +17,6 @@ for(const [finance,decision] of [["hr","reject"],["admin","approve"]] as const)t
  const department=await create("/departments",{branch_id:branch.id,code:"A",name:"Advance department"});
  const position=await create("/positions",{shop_id:shop.id,code:"A",name:"Advance position"});
  const onboard=await create("/employees/onboard",{employee:{employee_code:key,passport_id:key,first_name:"Advance",last_name:finance,hire_date:start},assignment:{branch_id:branch.id,department_id:department.id,position_id:position.id,employment_type:"full_time",base_salary:"30000.00",welfare_amount:"0.00",effective_from:start},account:{username:key.toLowerCase()}});
- await create(`/accounts/${onboard.account_id}/roles`,{role_code:"EMPLOYEE",reason:"UC12 isolated advance verification"});
  await create("/branch-schedules",{branch_id:branch.id,work_start_time:"09:00",standard_close_time:"18:00",late_grace_minutes:0,effective_from:start});
  for(const [config_key,numeric_value,unit] of [["STANDARD_WORK_DAYS","30","days"],["ABSENCE_RATE","1","multiplier"],["LATE_RATE","0","currency_per_minute"],["SOCIAL_SECURITY_RATE","0","ratio"],["SOCIAL_SECURITY_CAP","750","currency"]])await create("/payroll/configurations",{shop_id:shop.id,config_key,numeric_value,unit,effective_from:start});
  await create("/payroll/periods",{shop_id:shop.id,period_year:year,period_month:month,start_date:start,end_date:end});

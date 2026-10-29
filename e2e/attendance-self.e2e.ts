@@ -30,7 +30,6 @@ test("UC07 EMPLOYEE submits and corrects own manual attendance in UI, reloads pe
     assignment: { branch_id: branch.id, department_id: department.id, position_id: position.id, employment_type: "full_time", base_salary: "30000.00", welfare_amount: "0.00", effective_from: workDate },
     account: { username: key.toLowerCase() },
   });
-  await create(`/accounts/${onboard.account_id}/roles`, { role_code: "EMPLOYEE", reason: "UC07 isolated own attendance UAT" });
   await create("/branch-schedules", { branch_id: branch.id, work_start_time: "09:00", standard_close_time: "18:00", late_grace_minutes: 5, effective_from: workDate });
   const context = await browser.newContext({ baseURL });
   try {

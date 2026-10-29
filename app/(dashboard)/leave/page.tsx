@@ -36,12 +36,17 @@ export default function LeavePage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const linkedEmployee = new URLSearchParams(window.location.search).get("employee_id");
     void api<LeaveType[]>("/leave-types").then(setLeaveTypes).catch((cause) => setError(cause instanceof Error ? cause.message : "ไม่สามารถโหลดประเภทการลาได้"));
     void authApi.current().then((actor) => {
       setCanAdmin(actor.grants.some((grant) => ["HR", "OWNER"].includes(grant.role_code) && grant.scope === "all"));
       const context = employeeContextFor(actor);
       setEmployeeContext(context);
       if (context.mode === "self") setEmployeeId(context.employee.id);
+      else if (context.mode === "management") {
+        const requested = linkedEmployee;
+        if (requested && /^[1-9]\d*$/.test(requested)) setEmployeeId(requested);
+      }
     }).catch((cause) => {
       setEmployeeContext(null);
       setError(cause instanceof Error ? cause.message : "ไม่สามารถตรวจสอบสิทธิ์ได้");

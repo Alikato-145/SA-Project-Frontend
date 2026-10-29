@@ -32,10 +32,22 @@ export default function OvertimePage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const linkedEmployee = new URLSearchParams(window.location.search).get("employee_id");
     void authApi.current().then((actor) => {
       const context = employeeContextFor(actor);
       setEmployeeContext(context);
       if (context.mode === "self") setEmployeeId(context.employee.id);
+      if (context.mode === "management") {
+        const requestedEmployee = linkedEmployee;
+        if (requestedEmployee && /^[1-9]\d*$/.test(requestedEmployee)) {
+          setEmployeeId(requestedEmployee);
+          setLoading(true);
+          void api<Overtime[]>(`/overtime-records?employee_id=${encodeURIComponent(requestedEmployee)}`)
+            .then(setRows)
+            .catch((cause) => setError(cause instanceof Error ? cause.message : "ไม่สามารถโหลดคำขอ OT ได้"))
+            .finally(() => setLoading(false));
+        }
+      }
     }).catch((cause) => {
       setEmployeeContext(null);
       setError(cause instanceof Error ? cause.message : "ไม่สามารถตรวจสอบสิทธิ์ได้");

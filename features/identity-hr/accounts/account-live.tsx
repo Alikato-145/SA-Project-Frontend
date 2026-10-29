@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/api/client";
+import { authApi } from "@/lib/auth/auth-api";
 import type { AccountStatus, RoleGrant } from "../contracts/types";
 import { Field, StatusBadge, styles } from "../ui/primitives";
 import { RequestState } from "../ui/request-states";
@@ -546,6 +547,16 @@ export function RoleScopeForm({
   hasEmployee?: boolean;
 }) {
   const [role, setRole] = useState<RoleCode>("EMPLOYEE");
+  const [authority, setAuthority] = useState<"OWNER" | "HR" | "none" | null>(null);
+  useEffect(() => {
+    let active = true;
+    void authApi.current().then((actor) => {
+      if (!active) return;
+      const grants = actor.grants.filter((grant) => grant.scope === "all");
+      setAuthority(grants.some((grant) => grant.role_code === "OWNER") ? "OWNER" : grants.some((grant) => grant.role_code === "HR") ? "HR" : "none");
+    }).catch(() => { if (active) setAuthority("none"); });
+    return () => { active = false; };
+  }, []);
   const [shop, setShop] = useState("");
   const [shops, setShops] = useState<Choice[]>([]);
   const [branch, setBranch] = useState("");
@@ -591,6 +602,7 @@ export function RoleScopeForm({
   const scope = roleScopes[role];
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (authority !== "OWNER" && authority !== "HR") return;
     if (
       ((scope === "branch" || scope === "department") && !id(branch)) ||
       (scope === "department" && !id(department)) ||
@@ -617,6 +629,7 @@ export function RoleScopeForm({
         <Field label="บทบาท">
           <select
             className={styles.select}
+            disabled={authority === null || authority === "none"}
             value={role}
             onChange={(event) => {
               setRole(event.target.value as RoleCode);
@@ -625,7 +638,7 @@ export function RoleScopeForm({
               setDepartments([]);
             }}
           >
-            {Object.entries(roles).map(([code, label]) => (
+            {Object.entries(roles).filter(([code]) => code !== "OWNER" || authority === "OWNER").map(([code, label]) => (
               <option key={code} value={code}>
                 {label}
               </option>
@@ -688,10 +701,11 @@ export function RoleScopeForm({
           />
         </Field>
       </div>
+      {authority === "none" ? <RequestState kind="forbidden" title="ไม่สามารถกำหนดบทบาทได้" detail="ไม่สามารถตรวจสอบสิทธิ์ผู้ใช้งานได้ กรุณาเข้าสู่ระบบอีกครั้ง" /> : null}
       {error ? (
         <RequestState kind="error" title="ยังเพิ่มบทบาทไม่ได้" detail={error} />
       ) : null}
-      <button className={styles.button} type="submit" disabled={busy || (scope === "self" && !hasEmployee)}>
+      <button className={styles.button} type="submit" disabled={busy || authority === null || authority === "none" || (scope === "self" && !hasEmployee)}>
         เพิ่มบทบาท
       </button>
     </form>

@@ -8,6 +8,11 @@ import { PayrollAdjustments } from "@/components/payroll-adjustments";
 import { PageHeader } from "@/components/workspace-ui";
 import { missingConfigurationCoverage } from "@/lib/payroll/configuration-coverage";
 import { payrollMonth } from "@/lib/payroll/payroll-month";
+import { calculationCategory, calculationDetail, groupPayrollMoney } from "@/lib/payroll/calculation-details";
+import { configurationTarget } from "@/lib/payroll/readiness-context";
+import { groupPayrollByBranch } from "@/lib/payroll/branch-groups";
+import { configurationOptions, type ConfigurationKey } from "@/lib/payroll/configuration-options";
+import { fromConfigurationInput, toConfigurationInput } from "@/lib/payroll/configuration-values";
 import { ApiClientError } from "../../../lib/api/client";
 import { payrollApi, type PayrollConfiguration, type PayrollPeriod, type PayrollPreview, type PayrollRecord, type PayrollRosterEntry, type PayrollReadiness } from "../../../lib/payroll/payroll-api";
 import { authApi } from "../../../lib/auth/auth-api";
@@ -23,19 +28,10 @@ const messageFor = (cause: unknown) => cause instanceof ApiClientError
   ? `${cause.message} (${cause.code})`
   : cause instanceof Error ? cause.message : "ไม่สามารถทำรายการได้";
 
-const configurationOptions = {
-  STANDARD_WORK_DAYS: { label: "จำนวนวันทำงานมาตรฐาน", unit: "days", unitLabel: "วัน" },
-  ABSENCE_RATE: { label: "อัตราหักเมื่อขาดงาน", unit: "multiplier", unitLabel: "เท่าของค่าแรงรายวัน" },
-  LATE_RATE: { label: "อัตราหักเมื่อมาสาย", unit: "currency_per_minute", unitLabel: "บาทต่อนาที" },
-  OT_HOURLY_RATE: { label: "อัตรา OT รายชั่วโมง", unit: "multiplier", unitLabel: "เท่าของค่าแรงรายชั่วโมง" },
-  OT_REST_DAY_RATE: { label: "อัตรา OT วันหยุดประจำสัปดาห์", unit: "multiplier", unitLabel: "เท่าของค่าแรงรายวัน" },
-  OT_PUBLIC_HOLIDAY_RATE: { label: "อัตรา OT วันหยุดนักขัตฤกษ์", unit: "multiplier", unitLabel: "เท่าของค่าแรงรายวัน" },
-  SOCIAL_SECURITY_RATE: { label: "อัตราประกันสังคม", unit: "ratio", unitLabel: "สัดส่วน (เช่น 0.0500 = 5%)" },
-  SOCIAL_SECURITY_CAP: { label: "เพดานหักประกันสังคม", unit: "currency", unitLabel: "บาท" },
-} as const;
-type ConfigurationKey = keyof typeof configurationOptions;
 const configurationLabel = (key: string) => configurationOptions[key as ConfigurationKey]?.label ?? key;
-const unitLabel = (unit: string) => Object.values(configurationOptions).find((option) => option.unit === unit)?.unitLabel ?? unit;
+const unitLabel = (key: string, unit: string) => configurationOptions[key as ConfigurationKey]?.unitLabel ?? unit;
+const readinessActions: Record<string, string> = { organization: "ไปจัดการร้านและสาขา", employment: "ไปตรวจประวัติการจ้าง", schedule: "ไปตั้งตารางสาขา", configuration: "ไปตั้งค่าคำนวณเงินเดือน", attendance: "ไปตรวจข้อมูลลงเวลา", approvals: "ไปตรวจคำขอ", bank: "ไปตรวจบัญชีธนาคาร" };
+const readinessMessage = (message: string) => message.replace(/\b(?:STANDARD_WORK_DAYS|ABSENCE_RATE|LATE_RATE|SOCIAL_SECURITY_RATE|SOCIAL_SECURITY_CAP|OT_HOURLY_RATE|OT_REST_DAY_RATE|OT_PUBLIC_HOLIDAY_RATE)\b/g, configurationLabel);
 const periodStatusLabels: Record<string, string> = { draft: "ฉบับร่าง", previewed: "คำนวณแล้ว", locked: "ล็อกแล้ว" };
 const itemLabels: Record<string, string> = {
   base_salary: "ค่าแรงพื้นฐานรายวัน", welfare: "สวัสดิการรายวัน", absence: "หักขาดงาน",
@@ -50,7 +46,7 @@ const blockerLabels: Record<string, string> = {
   PAYROLL_NEGATIVE_NET_PAY: "เงินสุทธิติดลบ", PAYROLL_TOTAL_MISMATCH: "ยอดรวมไม่ตรงกัน",
   PAYROLL_CALCULATION_OUT_OF_RANGE: "ยอดคำนวณเกินช่วงที่รองรับ",
 };
-const requiredConfigurationKeys = Object.keys(configurationOptions) as ConfigurationKey[];
+const requiredConfigurationKeys = Object.keys(configurationOptions).filter((key) => key !== "STANDARD_WORK_DAYS") as ConfigurationKey[];
 
 export default function PayrollPage() {
   const [shopId, setShopId] = useState("");
@@ -73,7 +69,10 @@ export default function PayrollPage() {
   const [notice, setNotice] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
   const [canMutate, setCanMutate] = useState<boolean | null>(null);
-  const [configurationKey, setConfigurationKey] = useState<ConfigurationKey>("STANDARD_WORK_DAYS");
+  const [configurationBranch, setConfigurationBranch] = useState("");
+  const [configurationFrom, setConfigurationFrom] = useState("");
+  const [configurationTo, setConfigurationTo] = useState("");
+  const [configurationKey, setConfigurationKey] = useState<ConfigurationKey>("ABSENCE_RATE");
   const unavailableRole = !canAccessDashboardPath("/payroll", roleCodes);
   const coverage = useMemo(() => selected ? branches.map((branch) => ({ branch, missing: missingConfigurationCoverage(configurations, branch.id, requiredConfigurationKeys, selected.start_date, selected.end_date) })).filter((row) => row.missing.length) : [], [configurations, branches, selected]);
   const employeeLabel = (id: string) => { const row = roster.find((item) => item.employeeId === id); return row ? `${row.employeeCode} · ${row.employeeName}` : `พนักงาน ${id}`; };
@@ -142,10 +141,12 @@ export default function PayrollPage() {
 
   const submitConfiguration = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); const form = new FormData(event.currentTarget);
+    let value: string;
+    try { value = fromConfigurationInput(configurationKey, String(form.get("numeric_value"))); } catch (cause) { setError(messageFor(cause)); return; }
     void run(() => payrollApi.createConfiguration({
       shop_id: shopId, branch_id: String(form.get("branch_id") ?? "") || null,
-      config_key: configurationKey, numeric_value: String(form.get("numeric_value")),
-      unit: configurationOptions[configurationKey].unit, effective_from: String(form.get("effective_from")), effective_to: null,
+      config_key: configurationKey, numeric_value: value,
+      unit: configurationOptions[configurationKey].unit, effective_from: String(form.get("effective_from")), effective_to: String(form.get("effective_to") ?? "") || null,
     }), (created) => { setConfigurations((rows) => [...rows, created]); setWorkspaceVersion((version) => version + 1); }, "บันทึกค่าคำนวณแล้ว");
   };
 
@@ -190,13 +191,16 @@ export default function PayrollPage() {
     {canMutate === false && <p className="border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--ink)]">โหมดอ่านอย่างเดียว: Branch Manager ดูข้อมูลตามสาขาที่ได้รับสิทธิ์ แต่สร้าง คำนวณ หรือล็อกรอบไม่ได้</p>}
 
     {canMutate === true && <section className="grid gap-px overflow-hidden border border-[var(--line)] bg-[var(--line)] lg:grid-cols-2">
-      <details className="bg-[var(--surface)] p-5" open><summary className="cursor-pointer font-semibold">เพิ่มค่าคำนวณแบบ effective-dated</summary>
+      <details id="configuration-form" className="bg-[var(--surface)] p-5" open><summary className="cursor-pointer font-semibold">ตั้งค่าการคำนวณเงินเดือน</summary>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">ค่าที่ตั้งใช้กับทั้งสาขา หรือทั้งร้านตามขอบเขตที่เลือก ไม่ได้ตั้งเฉพาะพนักงานรายคน</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">จำนวนวันทำงานมาตรฐานคำนวณอัตโนมัติตามช่วงการจ้าง ตารางสาขา และวันหยุดของพนักงาน โดยวันหยุดที่ซ้อนกันนับครั้งเดียว ส่วนค่าด้านล่างให้เลือกวันที่เริ่มใช้</p>
         <form onSubmit={submitConfiguration} className="mt-5 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm">ค่าคำนวณ<select className={field} name="config_key" value={configurationKey} onChange={(event) => setConfigurationKey(event.target.value as ConfigurationKey)}>{Object.entries(configurationOptions).map(([key, option]) => <option key={key} value={key}>{option.label}</option>)}</select></label>
-          <label className="text-sm">หน่วย<input className={`${field} bg-[var(--canvas)]`} value={configurationOptions[configurationKey].unitLabel} readOnly /></label>
-          <label className="text-sm">ค่า<input className={field} name="numeric_value" inputMode="decimal" placeholder="20.0000" required /></label>
-          <label className="text-sm">เริ่มใช้<input className={field} name="effective_from" type="date" required /></label>
-          <label className="text-sm sm:col-span-2">สาขา <span className="text-[var(--muted)]">(เว้นว่าง = ทั้งร้าน)</span><select className={field} name="branch_id"><option value="">ทั้งร้าน</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label>
+          <label className="text-sm">ค่าคำนวณ<select className={field} name="config_key" value={configurationKey} onChange={(event) => setConfigurationKey(event.target.value as ConfigurationKey)}>{Object.entries(configurationOptions).filter(([key]) => key !== "STANDARD_WORK_DAYS").map(([key, option]) => <option key={key} value={key}>{option.label}</option>)}</select></label>
+          <div className="text-sm sm:col-span-2 rounded-md bg-[var(--paper)] p-3 leading-6 text-[var(--muted)]">{configurationOptions[configurationKey].example} ตัวเลขนี้เป็นตัวอย่าง กรุณาใช้ค่าที่ร้านกำหนด</div>
+          <label className="text-sm">ค่า <span className="text-[var(--muted)]">({configurationOptions[configurationKey].unitLabel})</span><input key={configurationKey} className={field} name="numeric_value" type="number" inputMode="decimal" min={configurationOptions[configurationKey].min} max={configurationOptions[configurationKey].max} step={configurationOptions[configurationKey].step} placeholder={configurationOptions[configurationKey].placeholder} required /></label>
+          <label className="text-sm">เริ่มใช้<input className={field} name="effective_from" type="date" value={configurationFrom} onChange={(event) => setConfigurationFrom(event.target.value)} required /></label>
+          <label className="text-sm">สิ้นสุด <span className="text-[var(--muted)]">(เว้นว่าง = ไม่กำหนด)</span><input className={field} name="effective_to" type="date" value={configurationTo} min={configurationFrom || undefined} onChange={(event) => setConfigurationTo(event.target.value)} /></label>
+          <label className="text-sm sm:col-span-2">สาขา <span className="text-[var(--muted)]">(เว้นว่าง = ทั้งร้าน)</span><select className={field} name="branch_id" value={configurationBranch} onChange={(event) => setConfigurationBranch(event.target.value)}><option value="">ทั้งร้าน</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label>
           <button className={`${button} sm:col-span-2 sm:justify-self-start`} disabled={busy || archivedShop}>บันทึกค่าคำนวณ</button>
         </form>
       </details>
@@ -216,23 +220,74 @@ export default function PayrollPage() {
         {!selected ? <div className="border border-dashed border-[var(--line)] p-8 text-center text-[var(--muted)]">เลือกรอบเพื่อเริ่มตรวจเงินเดือน</div> : <>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] pb-5"><div><h2 className="text-xl font-semibold">งวด {selected.period_month.toString().padStart(2, "0")}/{selected.period_year}</h2><p className="mt-1 text-sm text-[var(--muted)]">สถานะ {periodStatusLabels[selected.status] ?? selected.status}</p></div>{canMutate === true && <div className="flex gap-2"><button className={quietButton} onClick={() => calculate("preview")} disabled={busy || detailLoading || selected.status === "locked"}>คำนวณตัวอย่าง</button><button className={button} onClick={() => calculate("lock")} disabled={busy || detailLoading || selected.status === "locked"}>ล็อกรอบ</button></div>}</div>
           <section className="workspace-section" aria-label="ความพร้อมของงวด">
-            <h3 className="font-semibold">ความพร้อมของงวด</h3>
-            <p className="mt-2 text-sm text-[var(--muted)]">ตรวจข้อมูลตามช่วงวันที่ก่อนล็อกงวด บัญชีธนาคารจำเป็นสำหรับ CSV โอนเงิน ส่วนการล็อกยังตรวจยอดสุทธิและหลักฐานอีกครั้ง</p>
-            {!readiness ? <p role="status" className="mt-3 text-sm">กำลังตรวจความพร้อม…</p> : <ul className="mt-4 space-y-3">{readiness.checks.map((check) => <li key={check.key} className="border-t border-[var(--line)] pt-3 text-sm">
-              <strong>{check.label}</strong><span className="ml-2">{({ ready: "พร้อม", not_configured: "ยังไม่ตั้งค่า", invalid: "ข้อมูลไม่ครบ", pending: "รอพิจารณา" })[check.status]}</span>
-              {check.issues.length > 0 && <ul className="mt-2 space-y-2">{check.issues.map((issue, index) => <li key={index}><Link href={issue.href} className="underline underline-offset-4">{issue.message}</Link>{issue.dates?.length ? <details className="mt-1"><summary className="cursor-pointer text-[var(--muted)]">วันที่ต้องตรวจ ({issue.dates.length})</summary><p className="mt-1 break-words">{issue.dates.join(", ")}</p></details> : null}</li>)}</ul>}
-            </li>)}</ul>}
+            <h3 className="text-lg font-semibold">ตรวจข้อมูลก่อนปิดรอบเงินเดือน</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">ตรวจรายการที่ต้องแก้ให้ครบ แล้วคำนวณตัวอย่างเพื่อตรวจยอดก่อนล็อกรอบ</p>
+            {!readiness ? <p role="status" className="mt-4 text-sm">กำลังตรวจความพร้อม…</p> : <>
+              <p className="mt-4 rounded-md bg-[var(--accent-soft)] px-4 py-3 text-sm font-medium">{readiness.checks.some((check) => check.required_for_lock && check.status !== "ready") ? `ยังมี ${readiness.checks.filter((check) => check.required_for_lock && check.status !== "ready").length} หมวดที่ต้องตรวจสอบก่อนล็อกรอบ` : "ข้อมูลเบื้องต้นพร้อมแล้ว ตรวจยอดเงินเดือนก่อนล็อกรอบ"}</p>
+              {[true, false].map((required) => {
+                const checks = readiness.checks.filter((check) => check.required_for_lock === required && check.status !== "ready");
+                if (!checks.length) return null;
+                return <div key={String(required)} className="mt-5">
+                  <h4 className="font-semibold">{required ? "รายการที่ต้องแก้ก่อนล็อกรอบ" : "ข้อมูลเพิ่มเติม"}</h4>
+                  {!required && <p className="mt-1 text-sm text-[var(--muted)]">รายการเหล่านี้ไม่ขัดขวางการล็อกรอบ บัญชีธนาคารใช้สำหรับส่งออกไฟล์โอนเงิน</p>}
+                  <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[620px] border-collapse text-left text-sm">
+                    <thead><tr className="bg-[var(--accent-soft)]"><th scope="col" className="border border-[var(--line)] px-3 py-2">รายการตรวจ</th><th scope="col" className="border border-[var(--line)] px-3 py-2">ข้อมูลที่ต้องตรวจสอบ</th><th scope="col" className="border border-[var(--line)] px-3 py-2">ดำเนินการ</th></tr></thead>
+                    <tbody>{checks.map((check) => {
+                      const groups = new Map<string, typeof check.issues>();
+                      for (const [index, issue] of check.issues.entries()) {
+                        const key = issue.employee_id ? `${issue.employee_id}:${issue.href}` : `other:${index}`;
+                        groups.set(key, [...(groups.get(key) ?? []), issue]);
+                      }
+                      return [...groups.values()].map((issues, index) => {
+                        const first = issues[0]!;
+                        const employeeName = first.employee_id && first.message.includes(":") ? first.message.split(":", 1)[0] : null;
+                        return <tr key={`${check.key}-${index}`} className="align-top">
+                          <th scope="row" className="border border-[var(--line)] px-3 py-3 font-semibold">{check.label}<span className="mt-1 block text-xs font-normal text-amber-800">{check.status === "pending" ? "รอพิจารณา" : "ต้องตรวจสอบ"}</span></th>
+                          <td className="border border-[var(--line)] px-3 py-3">{employeeName && <strong className="block">{employeeName}</strong>}<ul className="space-y-2">{issues.map((issue, issueIndex) => <li key={issueIndex} className="leading-6">{readinessMessage(employeeName && issue.message.startsWith(`${employeeName}:`) ? issue.message.slice(employeeName.length + 1).trim() : issue.message)}{check.key === "configuration" && canMutate && configurationTarget(issue, roster) && <button type="button" className="ml-2 font-semibold text-[var(--accent)] underline underline-offset-4" onClick={() => {
+                            const target = configurationTarget(issue, roster);
+                            if (!target || !(target.key in configurationOptions)) return;
+                            setConfigurationKey(target.key as ConfigurationKey); setConfigurationBranch(target.branchId); setConfigurationFrom(target.from); setConfigurationTo(target.to);
+                            const form = document.getElementById("configuration-form") as HTMLDetailsElement | null;
+                            if (form) { form.open = true; form.scrollIntoView({ behavior: "smooth", block: "start" }); }
+                          }}>ตั้งค่านี้</button>}{issue.dates?.length ? <details><summary className="cursor-pointer text-xs text-[var(--muted)]">ดูวันที่ต้องตรวจ ({issue.dates.length} วัน)</summary><p className="mt-1 break-words text-xs">{issue.dates.join(", ")}</p></details> : null}</li>)}</ul></td>
+                          <td className="border border-[var(--line)] px-3 py-3">{check.key === "configuration" && canMutate && issues.every((issue) => configurationTarget(issue, roster)) ? <span className="text-[var(--muted)]">กด “ตั้งค่านี้” ข้างรายการที่ขาด</span> : <Link href={(() => {
+                            const assignment = roster.find((row) => row.employeeId === first.employee_id && first.dates?.[0] && row.effectiveFrom <= first.dates[0] && (!row.effectiveTo || row.effectiveTo >= first.dates[0]));
+                            if (check.key === "schedule" && assignment) return `/schedules?${new URLSearchParams({ shop_id: shopId, branch_id: assignment.branchId })}`;
+                            if (check.key === "approvals" && ["/overtime", "/leave", "/finance"].includes(first.href) && first.employee_id) return `${first.href}?${new URLSearchParams({ employee_id: first.employee_id })}`;
+                            if (check.key === "attendance" && first.employee_id && selected) return `/attendance?${new URLSearchParams({ employee_id: first.employee_id, start_date: selected.start_date, end_date: selected.end_date })}`;
+                            return first.href;
+                          })()} className="font-semibold text-[var(--accent)] underline underline-offset-4">{readinessActions[check.key] ?? "ไปตรวจข้อมูล"}</Link>}</td>
+                        </tr>;
+                      });
+                    })}</tbody>
+                  </table></div>
+                </div>;
+              })}
+              <details className="mt-4 text-sm"><summary className="cursor-pointer font-semibold">รายการที่ตรวจแล้วและพร้อม ({readiness.checks.filter((check) => check.status === "ready").length} รายการ)</summary><ul className="mt-2 space-y-1 text-[var(--muted)]">{readiness.checks.filter((check) => check.status === "ready").map((check) => <li key={check.key}>{check.label} — พร้อม</li>)}</ul></details>
+            </>}
           </section>
           {preview?.blockers.length ? <div className="border border-amber-300 bg-amber-50 p-4"><h3 className="font-semibold text-amber-950">ยังล็อกรอบไม่ได้</h3><ul className="mt-2 space-y-2 text-sm text-amber-950">{preview.blockers.map((item, index) => <li key={`${item.code}-${index}`}><strong>{blockerLabels[item.code] ?? item.code}</strong>{item.employeeId ? ` · ${item.employeeName ?? employeeLabel(item.employeeId)}` : ""}<br />{item.detail}<br /><Link className="underline" href={item.code === "PAYROLL_ASSIGNMENT_MISSING" ? `/employees/${item.employeeId}/employment` : item.code === "PAYROLL_CONFIGURATION_MISSING" ? "#configuration-readiness" : item.code === "PAYROLL_APPROVALS_PENDING" ? "/leave" : "/attendance"}>ไปตรวจข้อมูลที่เกี่ยวข้อง</Link>{item.code === "PAYROLL_ATTENDANCE_INCOMPLETE" && <Link className="ml-3 underline" href="/schedules">ตรวจตารางสาขา</Link>}</li>)}</ul></div> : null}
           <details className="workspace-section"><summary className="cursor-pointer font-semibold">พนักงานที่มีประวัติการสังกัดในงวดนี้ ({new Set(roster.map((row) => row.employeeId)).size} คน)</summary>
             <p className="mt-3 text-sm text-[var(--muted)]">รายชื่อมาจากประวัติการจ้างที่มีผลในช่วงงวด การผูกบัญชีหรือบทบาทกับสาขาเพียงอย่างเดียวไม่เพิ่มพนักงานในเงินเดือน หากไม่พบรายชื่อ ให้ตรวจวันที่เริ่มงานและประวัติการสังกัด</p>
             <ul className="mt-3 space-y-2 text-sm">{roster.map((row) => <li key={`${row.employeeId}-${row.effectiveFrom}`}><Link className="underline" href={`/employees/${row.employeeId}/employment`}>{row.employeeCode} · {row.employeeName}</Link> · {row.branchName} · {row.effectiveFrom} ถึง {row.effectiveTo ?? "ปัจจุบัน"}{preview?.blockers.some((item) => item.employeeId === row.employeeId) ? " · ต้องแก้ข้อมูลก่อนคำนวณ" : preview?.records.some((item) => item.employee_id === row.employeeId) ? " · มีผลคำนวณแล้ว" : " · ยังไม่มีผลคำนวณ"}</li>)}</ul>
           </details>
-          <div className="overflow-x-auto border-y border-[var(--line)]"><table className="w-full min-w-[680px] border-collapse text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-3 pr-4">พนักงาน</th><th className="py-3 pr-4 text-right">รายได้</th><th className="py-3 pr-4 text-right">รายการหัก</th><th className="py-3 pr-4 text-right">สุทธิ</th><th className="py-3 text-right">หลักฐาน</th></tr></thead><tbody>
-            {(detailLoading || !preview || preview.records.length === 0) && <tr><td colSpan={5} className="border-t border-[var(--line)] py-8 text-center text-[var(--muted)]">{detailLoading ? "กำลังโหลดรายการเงินเดือน…" : selected.status === "locked" ? "ไม่มีรายการเงินเดือนในงวดที่ล็อกนี้" : "ยังไม่มีรายการเงินเดือน กดคำนวณตัวอย่างหรือตรวจข้อมูลก่อนคำนวณ"}</td></tr>}
-            {preview?.records.map((row) => <tr key={row.employee_id} className="border-t border-[var(--line)]"><td className="py-4 pr-4 font-semibold">{employeeLabel(row.employee_id)}<span className="block text-xs font-normal text-[var(--muted)]">{branches.find((branch) => branch.id === row.branch_id)?.name ?? "สาขาตามประวัติการจ้าง"}</span></td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_earnings)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_deductions)}</td><td className="py-4 pr-4 text-right font-semibold tabular-nums">{formatMoney(row.net_pay)}</td><td className="py-4 text-right"><button className={quietButton} onClick={() => showRecord(row)}>ดู {row.items.length} รายการ</button></td></tr>)}
-          </tbody></table></div>
-          {record && <section aria-labelledby="record-evidence" className="bg-[var(--ink)] p-5 text-white"><div className="flex items-center justify-between gap-4"><h3 id="record-evidence" className="font-semibold">หลักฐาน {employeeLabel(record.employee_id)}</h3><button className="text-sm underline" onClick={() => setRecord(null)}>ปิด</button></div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div><dt className="text-white/60">ฐานเงินเดือน</dt><dd>{formatMoney(record.base_salary_snapshot)}</dd></div><div><dt className="text-white/60">สวัสดิการ</dt><dd>{formatMoney(record.welfare_snapshot)}</dd></div><div><dt className="text-white/60">รายได้</dt><dd>{formatMoney(record.total_earnings)}</dd></div><div><dt className="text-white/60">สุทธิ</dt><dd>{formatMoney(record.net_pay)}</dd></div></dl><ul className="mt-5 divide-y divide-white/15">{record.items.map((item, index) => <li key={`${item.item_type}-${item.source_id ?? index}`} className="grid gap-1 py-3 text-sm sm:grid-cols-[1fr_auto]"><span>{itemLabels[item.item_type] ?? item.description}<span className="block text-xs text-white/60">{item.occurred_on ? `${item.occurred_on} · ` : ""}{item.source_table && item.source_id ? `${item.source_table} #${item.source_id}` : item.item_type}{item.payroll_configuration_id ? ` · config #${item.payroll_configuration_id}` : ""}</span></span><strong className="tabular-nums">{item.direction === "deduction" ? "−" : "+"}{formatMoney(item.amount)}</strong></li>)}</ul></section>}
+          <section aria-label="รายการเงินเดือนแยกตามสาขา">
+            <h3 className="font-semibold">รายการเงินเดือนแยกตามสาขา</h3>
+            <p className="mt-1 text-sm text-[var(--muted)]">แสดงตามสาขาที่บันทึกในรายการเงินเดือน ยอดของพนักงานเป็นยอดรวมทั้งงวด รวมถึงกรณีย้ายสาขาระหว่างเดือน การคำนวณและล็อกยังทำพร้อมกันทั้งร้าน</p>
+            {(detailLoading || !preview || preview.records.length === 0) && <p className="border-y border-[var(--line)] py-8 text-center text-sm text-[var(--muted)]">{detailLoading ? "กำลังโหลดรายการเงินเดือน…" : selected.status === "locked" ? "ไม่มีรายการเงินเดือนในงวดที่ล็อกนี้" : "ยังไม่มีรายการเงินเดือน กดคำนวณตัวอย่างหรือตรวจข้อมูลก่อนคำนวณ"}</p>}
+            {!detailLoading && preview && groupPayrollByBranch(preview.records).map((group) => <section key={group.branchId} className="mt-5" aria-label={`สาขา ${branches.find((branch) => branch.id === group.branchId)?.name ?? group.branchId}`}>
+              <h4 className="border-b border-[var(--line)] bg-[var(--accent-soft)] px-3 py-2 font-semibold">{branches.find((branch) => branch.id === group.branchId)?.name ?? `สาขา ${group.branchId}`} <span className="text-sm font-normal">({group.records.length} คน)</span></h4>
+              <div className="overflow-x-auto"><table className="w-full min-w-[680px] border-collapse text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-3 pr-4">พนักงาน</th><th className="py-3 pr-4 text-right">รายได้</th><th className="py-3 pr-4 text-right">รายการหัก</th><th className="py-3 pr-4 text-right">สุทธิ</th><th className="py-3 text-right">รายละเอียด</th></tr></thead><tbody>
+                {group.records.map((row) => <tr key={row.employee_id} className="border-t border-[var(--line)]"><td className="py-4 pr-4 font-semibold">{employeeLabel(row.employee_id)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_earnings)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_deductions)}</td><td className="py-4 pr-4 text-right font-semibold tabular-nums">{formatMoney(row.net_pay)}</td><td className="py-4 text-right"><button className={quietButton} onClick={() => showRecord(row)}>ดู {groupPayrollMoney(row.items).length} รายการ</button></td></tr>)}
+              </tbody></table></div>
+            </section>)}
+          </section>
+          {record && <section aria-labelledby="record-evidence" className="bg-[var(--ink)] p-5 text-white"><div className="flex items-center justify-between gap-4"><h3 id="record-evidence" className="font-semibold">รายละเอียดเงินเดือน {employeeLabel(record.employee_id)}</h3><button className="text-sm underline" onClick={() => setRecord(null)}>ปิด</button></div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5"><div><dt className="text-white/60">ฐานเงินเดือน</dt><dd>{formatMoney(record.base_salary_snapshot)}</dd></div><div><dt className="text-white/60">สวัสดิการ</dt><dd>{formatMoney(record.welfare_snapshot)}</dd></div><div><dt className="text-white/60">รายได้</dt><dd>{formatMoney(record.total_earnings)}</dd></div><div><dt className="text-white/60">รายการหัก</dt><dd>{formatMoney(record.total_deductions)}</dd></div><div><dt className="text-white/60">สุทธิ</dt><dd>{formatMoney(record.net_pay)}</dd></div></dl><h4 className="mt-5 font-semibold">สรุปรายได้และรายการหัก</h4>
+            <div aria-label="กลุ่มรายได้และรายการหัก" className="mt-2 divide-y divide-white/15 border-y border-white/15">{groupPayrollMoney(record.items).map((group) => <details key={`${group.itemType}-${group.direction}`} className="py-3 text-sm"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-1"><span className="font-medium">{group.itemType === "other" ? "รายการอื่น ๆ" : itemLabels[group.itemType] ?? group.items[0]?.description} <span className="font-normal text-white/70">({group.items.length} รายการ · กดดูรายละเอียด)</span></span><strong className="tabular-nums">{group.direction === "deduction" ? "−" : "+"}{formatMoney(group.total)} บาท</strong></summary><ul className="mt-2 divide-y divide-white/10 pl-3">{group.items.map((item, index) => <li key={`${item.source_id ?? "item"}-${index}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><span>{item.occurred_on ? `วันที่ ${item.occurred_on}` : item.description}{item.item_type === "adjustment" && item.occurred_on ? ` · ${item.description}` : ""}</span><span className="tabular-nums">{group.direction === "deduction" ? "−" : "+"}{formatMoney(item.amount)} บาท</span></li>)}</ul></details>)}</div>
+            <details className="mt-5 border-t border-white/20 pt-4"><summary className="cursor-pointer font-semibold">ข้อมูลที่ใช้คำนวณ ({record.items.filter((item) => item.item_type === "other" && Number(item.amount) === 0).length} รายการ)</summary><p className="mt-2 text-sm text-white/70">เลือกหมวดเพื่อดูข้อมูลประกอบ รายการเหล่านี้ไม่มีผลเพิ่มหรือลดยอดเงิน</p>{["ค่าที่ใช้คำนวณ", "วันทำงานและวันหยุดตามตาราง", "ข้อมูลการลงเวลา", "การลาที่อนุมัติแล้ว", "ข้อมูลประกอบอื่น ๆ"].map((category) => {
+              const items = record.items.filter((item) => item.item_type === "other" && Number(item.amount) === 0 && calculationCategory(item) === category);
+              return items.length ? <details key={category} className="mt-2 border-t border-white/15 pt-2 text-sm"><summary className="cursor-pointer font-medium">{category} ({items.length} รายการ)</summary><ul className="mt-2 divide-y divide-white/10 pl-3">{items.map((item, index) => <li key={`${item.source_id ?? "detail"}-${index}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><span>{calculationDetail(item, Object.fromEntries(branches.map(branch => [branch.id, branch.name])))}</span>{item.occurred_on && <span className="text-white/70">{item.occurred_on}</span>}</li>)}</ul></details> : null;
+            })}</details></section>}
         </>}
       </div>
     </section>
@@ -240,6 +295,6 @@ export default function PayrollPage() {
     {canMutate === true && selected?.status === "locked" && <PayrollPayments key={selected.id} periodId={selected.id} branches={branches} />}
     {canMutate === true && <PayrollAdjustments />}
 
-    <details id="configuration-readiness" className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ความพร้อมของค่าคำนวณ ({configurations.length})</summary><div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]"><div className="bg-[var(--accent-soft)] p-4 text-sm"><strong className="block">ก่อน preview/lock</strong><p className="mt-2 leading-6">{!selected ? "เลือกงวดเพื่อตรวจช่วงวันที่" : coverage.length ? coverage.map(({ branch, missing }) => `${branch.name}: ${missing.map((item) => `${configurationLabel(item.key)} (เริ่มขาด ${item.date})`).join(" · ")}`).join("; ") : "ค่าคำนวณครอบคลุมทุกวันของงวดในสาขาที่แสดงแล้ว"}</p>{shops.length === 0 ? <Link href="/settings" className="mt-3 inline-block font-semibold underline underline-offset-4">ไปเพิ่มร้าน</Link> : null}</div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? branches.find((branch) => branch.id === row.branch_id)?.name ?? "สาขาตามประวัติ" : "ทั้งร้าน"}</td><td>{row.numeric_value} {unitLabel(row.unit)}</td><td>{row.effective_from} ถึง {row.effective_to ?? "ปัจจุบัน"}{canMutate && !archivedShop && <PayrollConfigurationSuccessor configuration={row} onSaved={() => { void loadWorkspace(); }} />}</td></tr>)}</tbody></table></div></div></details>
+    <details id="configuration-readiness" className="border-t border-[var(--line)] pt-5"><summary className="cursor-pointer font-semibold">ความพร้อมของค่าคำนวณ ({configurations.length})</summary><div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]"><div className="bg-[var(--accent-soft)] p-4 text-sm"><strong className="block">ก่อน preview/lock</strong><p className="mt-2 leading-6">{!selected ? "เลือกงวดเพื่อตรวจช่วงวันที่" : coverage.length ? coverage.map(({ branch, missing }) => `${branch.name}: ${missing.map((item) => `${configurationLabel(item.key)} (เริ่มขาด ${item.date})`).join(" · ")}`).join("; ") : "ค่าคำนวณครอบคลุมทุกวันของงวดในสาขาที่แสดงแล้ว"}</p>{shops.length === 0 ? <Link href="/settings" className="mt-3 inline-block font-semibold underline underline-offset-4">ไปเพิ่มร้าน</Link> : null}</div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-2">ค่า</th><th>ขอบเขต</th><th>ตัวเลข</th><th>เริ่มใช้</th></tr></thead><tbody>{configurations.map((row) => <tr key={row.id} className="border-t border-[var(--line)]"><td className="py-3 font-medium">{configurationLabel(row.config_key)}<span className="block font-mono text-xs font-normal text-[var(--muted)]">{row.config_key}</span></td><td>{row.branch_id ? branches.find((branch) => branch.id === row.branch_id)?.name ?? "สาขาตามประวัติ" : "ทั้งร้าน"}</td><td>{toConfigurationInput(row.config_key, row.numeric_value)} {unitLabel(row.config_key, row.unit)}</td><td>{row.effective_from} ถึง {row.effective_to ?? "ปัจจุบัน"}{row.config_key === "STANDARD_WORK_DAYS" && <span className="block text-xs text-[var(--muted)]">ค่าเดิม: ระบบคำนวณจากตารางและวันหยุดโดยอัตโนมัติ</span>}{canMutate && !archivedShop && row.config_key !== "STANDARD_WORK_DAYS" && <PayrollConfigurationSuccessor configuration={row} onSaved={() => { void loadWorkspace(); }} />}</td></tr>)}</tbody></table></div></div></details>
   </div>;
 }

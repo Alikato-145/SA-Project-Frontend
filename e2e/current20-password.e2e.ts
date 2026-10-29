@@ -32,9 +32,8 @@ for (const role of ["EMPLOYEE", "SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"]) 
   const account = await create("/employees/onboard", {
     employee: { employee_code: key, passport_id: key, first_name: "Password", last_name: "Actor", hire_date: "2026-09-01" },
     assignment: { branch_id: branch.id, department_id: department.id, position_id: position.id, employment_type: "full_time", base_salary: "26000.00", welfare_amount: "0.00", effective_from: "2026-09-01" },
-    account: { username: key.toLowerCase() },
+    account: { username: key.toLowerCase(), role_code: role },
   });
-  await create(`/accounts/${account.account_id}/roles`, { role_code: role, branch_id: ["SUPERVISOR", "BRANCH_MANAGER"].includes(role) ? branch.id : null, department_id: role === "SUPERVISOR" ? department.id : null, reason: "Single-role password acceptance fixture" });
   const context = await browser.newContext({ baseURL });
   try {
     const actor = await context.newPage();

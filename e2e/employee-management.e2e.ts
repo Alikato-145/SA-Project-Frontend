@@ -13,7 +13,7 @@ for (const username of ["branch_manager", "hr", "admin"]) test(`${username} crea
   await expect(page).not.toHaveURL(/\/login$/);
   await page.goto("/employees");
   await page.getByRole("link", { name: "เพิ่มพนักงาน", exact: true }).click();
-  await page.getByLabel("รหัสพนักงาน", { exact: true }).fill(code);
+  await expect(page.getByLabel("รหัสพนักงาน", { exact: true })).toHaveCount(0);
   await page.getByLabel("วันที่เริ่มงาน", { exact: true }).fill(today);
   await page.getByLabel("ชื่อ", { exact: true }).fill("Scoped");
   await page.getByLabel("นามสกุล", { exact: true }).fill("Manager");
@@ -42,9 +42,12 @@ for (const username of ["branch_manager", "hr", "admin"]) test(`${username} crea
   const denied = await page.request.get(`/api/v1/employees?search=${code}-DENY`);
   expect((await denied.json()).data).toHaveLength(0);
   }
+  const createdResponse = page.waitForResponse(response => response.url().endsWith("/api/v1/employees/onboard") && response.request().method() === "POST");
   await page.getByRole("button", { name: "สร้างพนักงาน", exact: true }).click();
+  const created = (await (await createdResponse).json()).data;
+  expect(created.employee.employee_code).toBe(created.employee.id);
   await page.getByRole("link", { name: "ดูข้อมูลพนักงาน", exact: true }).click();
-  await expect(page.getByRole("definition").filter({ hasText: code })).toBeVisible();
+  await expect(page.getByRole("definition").filter({ hasText: created.employee.employee_code })).toBeVisible();
   const employeeId = new URL(page.url()).pathname.split("/").at(-1)!;
   await page.getByText("แก้ข้อมูลติดต่อพนักงาน", { exact: true }).click();
   await page.locator('[name="phone"]').fill("0812345678");

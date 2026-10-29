@@ -30,7 +30,6 @@ test("UC08 EMPLOYEE quota rejection leaves no request; valid submit/reload and i
     assignment:{branch_id:branch.id,department_id:department.id,position_id:position.id,employment_type:"full_time",base_salary:"30000.00",welfare_amount:"0.00",effective_from:"2020-01-01"},
     account:{username:key.toLowerCase()},
   });
-  await create(`/accounts/${onboard.account_id}/roles`,{role_code:"EMPLOYEE",reason:"UC08 disposable quota verification"});
   const type = await create("/leave-types",{code:key,name_th:key,quota_type:"fixed",quota_days:"1",is_deductible:false,requires_document:false,allow_exceed:false,is_active:true});
   expect((await page.request.put("/api/v1/leave-quotas",{headers,data:{employee_id:onboard.employee.id,leave_type_id:type.id,quota_year:2038,entitled_days:"1"}})).ok()).toBe(true);
   const context = await browser.newContext({baseURL});

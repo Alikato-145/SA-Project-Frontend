@@ -93,7 +93,6 @@ export function OrganizationLive() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [parents, setParents] = useState<Item[]>([]);
-  const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [filterParent, setFilterParent] = useState("");
@@ -159,17 +158,16 @@ export function OrganizationLive() {
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
-    if (!code.trim() || !name.trim() || (!editing && parentField[kind] && !parent)) {
+    if (!name.trim() || (!editing && parentField[kind] && !parent)) {
       setNotice({
         kind: "error",
-        message: "กรอกรหัส ชื่อ และหน่วยงานแม่ให้ครบ",
+        message: "กรอกชื่อและหน่วยงานแม่ให้ครบ",
       });
       return;
     }
     setBusy(true);
     setNotice(null);
     const payload: Record<string, string> = {
-      code: code.trim(),
       name: name.trim(),
     };
     if (!editing && parentField[kind]) payload[parentField[kind]] = parent;
@@ -180,7 +178,6 @@ export function OrganizationLive() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      setCode("");
       setName("");
       setParent("");
       setNotice({ kind: "success", message: `${editing ? "แก้ไข" : "เพิ่ม"}${names[kind]}แล้ว` });
@@ -259,7 +256,6 @@ export function OrganizationLive() {
                 setNotice(null);
                 setSelected(null);
                 setEditing(null);
-                setCode("");
                 setName("");
               }}
             >
@@ -356,7 +352,7 @@ export function OrganizationLive() {
                       </td>
                       <td>
                         <button className={styles.buttonSecondary} type="button" disabled={busy} onClick={() => {
-                          setEditing(item); setCode(item.code); setName(item.name);
+                          setEditing(item); setName(item.name);
                           setParent(item.parent_id ?? ""); setTimezone(item.timezone ?? "Asia/Bangkok");
                           setSelected(null); setNotice(null);
                         }}>แก้ไข</button>
@@ -420,15 +416,6 @@ export function OrganizationLive() {
         <h2>{editing ? "แก้ไข" : "เพิ่ม"}{names[kind]}</h2>
         <form onSubmit={(event) => void create(event)}>
           <div className={styles.formGrid}>
-            <Field label="รหัส">
-              <input
-                className={styles.input}
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                maxLength={30}
-                required
-              />
-            </Field>
             <Field label="ชื่อ">
               <input
                 className={styles.input}
@@ -471,7 +458,7 @@ export function OrganizationLive() {
             {editing ? "บันทึกการแก้ไข" : `เพิ่ม${names[kind]}`}
           </button>
           {editing && <button className={styles.buttonSecondary} type="button" disabled={busy} onClick={() => {
-            setEditing(null); setCode(""); setName(""); setParent(""); setTimezone("Asia/Bangkok");
+            setEditing(null); setName(""); setParent(""); setTimezone("Asia/Bangkok");
           }}>ยกเลิกการแก้ไข</button>}
         </form>
       </section>

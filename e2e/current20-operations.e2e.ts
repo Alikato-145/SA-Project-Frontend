@@ -36,7 +36,6 @@ for (const role of ["SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"]) test(`UC07/0
     assignment: { branch_id: branch.id, department_id: department.id, position_id: position.id, employment_type: "full_time", base_salary: "26000.00", welfare_amount: "0.00", effective_from: "2026-09-01" },
     account: { username: key.toLowerCase() },
   });
-  await create(`/accounts/${onboard.account_id}/roles`, { role_code: "EMPLOYEE", reason: "Own-only current20 fixture" });
   const staff = await create("/accounts/", { username: `s_${key.toLowerCase()}` });
   await create(`/accounts/${staff.account.id}/roles`, { role_code: role, branch_id: ["SUPERVISOR", "BRANCH_MANAGER"].includes(role) ? branch.id : null, department_id: role === "SUPERVISOR" ? department.id : null, reason: "Single-role current20 fixture" });
   const type = await create("/leave-types", { code: key, name_th: key, quota_type: "none", quota_days: null, is_deductible: false, requires_document: false, allow_exceed: false, is_active: true });
@@ -53,14 +52,13 @@ for (const role of ["SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"]) test(`UC07/0
       await manager.goto("/schedules");
       await manager.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(shop.id);
       await manager.getByRole("combobox", { name: "สาขา", exact: true }).selectOption(branch.id);
-      await manager.getByLabel("วันที่ตรวจตาราง", { exact: true }).fill("2037-01-01");
       await manager.getByRole("button", { name: "โหลดตารางและวันหยุด", exact: true }).click();
       await manager.getByLabel("เวลาเริ่มงาน", { exact: true }).fill("09:00");
       await manager.getByLabel("เวลาเลิกงาน", { exact: true }).fill("18:00");
       await manager.getByLabel("อนุโลมมาสาย (นาที)", { exact: true }).fill("5");
       await manager.getByLabel("เริ่มใช้วันที่", { exact: true }).fill("2037-01-01");
       await manager.getByRole("button", { name: "บันทึกตารางเวลา", exact: true }).click();
-      await expect(manager.getByText(/ตารางที่มีผล: ตาราง/)).toBeVisible();
+      await expect(manager.getByRole("listitem").filter({ hasText: /2037-01-01.*09:00/ })).toBeVisible();
     } else await create("/branch-schedules", { branch_id: branch.id, work_start_time: "09:00", standard_close_time: "18:00", late_grace_minutes: 5, effective_from: "2037-01-01" });
     await manager.goto("/attendance"); await picker(manager, key);
     await manager.getByLabel("ตั้งแต่", { exact: true }).fill("2037-01-01");

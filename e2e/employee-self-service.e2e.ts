@@ -34,7 +34,6 @@ test("EMPLOYEE submits own leave and eligible advance, reloads and sees HR decis
     assignment: { branch_id: branch.id, department_id: department.id, position_id: position.id, employment_type: "full_time", base_salary: "30000.00", welfare_amount: "0.00", effective_from: start },
     account: { username: key.toLowerCase() },
   });
-  await create(`/accounts/${onboard.account_id}/roles`, { role_code: "EMPLOYEE", reason: "Synthetic own-only UAT" });
   await create("/branch-schedules", { branch_id: branch.id, work_start_time: "09:00", standard_close_time: "18:00", late_grace_minutes: 0, effective_from: start });
   for (const [config_key, numeric_value, unit] of [["STANDARD_WORK_DAYS", "30", "days"], ["ABSENCE_RATE", "1", "multiplier"], ["LATE_RATE", "0", "currency_per_minute"], ["SOCIAL_SECURITY_RATE", "0", "ratio"], ["SOCIAL_SECURITY_CAP", "750", "currency"]]) {
     await create("/payroll/configurations", { shop_id: shop.id, config_key, numeric_value, unit, effective_from: start });

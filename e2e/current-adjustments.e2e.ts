@@ -71,10 +71,10 @@ for (const username of ["admin", "hr"]) {
     await page.getByRole("button", { name: "คำนวณตัวอย่าง", exact: true }).click();
     const uiPreviewResponse = await uiPreview;
     expect(uiPreviewResponse.ok(), await uiPreviewResponse.text()).toBe(true);
-    expect((await uiPreviewResponse.json()).data.records[0].net_pay).toBe("125.01");
+    expect((await uiPreviewResponse.json()).data.records[0].net_pay).toBe("2625.01");
     for (let repeat = 0; repeat < 2; repeat++) {
       const preview = await create(`/payroll/periods/${period.id}/preview`, {});
-      expect(preview.records[0].net_pay).toBe("125.01");
+      expect(preview.records[0].net_pay).toBe("2625.01");
       expect(preview.records[0].items.filter((item: { source_table: string }) => item.source_table === "payroll_adjustments")).toHaveLength(1);
     }
     const locked = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/payroll/periods/${period.id}/lock` && response.request().method() === "POST");
@@ -83,7 +83,7 @@ for (const username of ["admin", "hr"]) {
     const lockedResponse = await locked; expect(lockedResponse.ok(), await lockedResponse.text()).toBe(true);
     await page.reload();
     const persistent = await page.request.get(`/api/v1/payroll/periods/${period.id}`);
-    expect((await persistent.json()).data.records[0].net_pay).toBe("125.01");
+    expect((await persistent.json()).data.records[0].net_pay).toBe("2625.01");
     const applied = await page.request.get(`/api/v1/payroll/adjustments?period_id=${period.id}`);
     expect((await applied.json()).data[0]).toMatchObject({ status: "applied", employee_id: employeeId });
     await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(shop.id);

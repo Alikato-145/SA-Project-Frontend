@@ -28,6 +28,8 @@ export interface EmployeeListFilters {
   page: number;
   search: string;
   status: "all" | EmployeeStatus;
+  branchId?: string;
+  departmentId?: string;
 }
 
 export type NewAssignment = Pick<
@@ -79,6 +81,8 @@ export const employeeReadApi = {
     });
     if (filters.search.trim()) query.set("search", filters.search.trim());
     if (filters.status !== "all") query.set("status", filters.status);
+    if (filters.branchId) query.set("branch_id", filters.branchId);
+    if (filters.departmentId) query.set("department_id", filters.departmentId);
     return apiRequestPage<EmployeeSummary>(
       `/v1/employees?${query}`,
       options(signal),
