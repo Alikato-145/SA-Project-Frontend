@@ -127,7 +127,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await page.getByRole("button", { name: "สร้างพนักงาน", exact: true }).click();
   const savedOnboarding = await onboardingResponse;
   expect(savedOnboarding.ok(), await savedOnboarding.text()).toBe(true);
-  const onboard = (await savedOnboarding.json()).data as { employee: { id: string }; account_id: string; temporary_password: string };
+  const onboard = (await savedOnboarding.json()).data as { employee: { id: string; employee_code: string }; account_id: string; temporary_password: string };
   const employeeId = onboard.employee.id;
   await mutate(`/employees/${employeeId}/payment-destination`, { payment_method: "transfer", promptpay_phone: "0812345678" }, "PUT");
   const employeeContext = await browser.newContext();
@@ -160,9 +160,9 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   const type = (await savedType.json()).data as { id: string };
   const quotaForm = page.locator("form").filter({ has: page.getByRole("heading", { name: "กำหนดสิทธิ์รายปี", exact: true }) });
   const quotaPicker = quotaForm.getByPlaceholder("ค้นหาชื่อหรือรหัสพนักงาน", { exact: true });
-  await quotaPicker.fill(`E_${suffix}`);
-  await expect(quotaForm.locator(`datalist option[value^="E_${suffix}"]`)).toHaveCount(1);
-  await quotaPicker.fill(`E_${suffix} · ทดสอบ ครบวงจร`);
+  await quotaPicker.fill(onboard.employee.employee_code);
+  await expect(quotaForm.locator(`datalist option[value^="${onboard.employee.employee_code}"]`)).toHaveCount(1);
+  await quotaPicker.fill(`${onboard.employee.employee_code} · ทดสอบ ครบวงจร`);
   await quotaForm.getByLabel("ปี ค.ศ.", { exact: true }).fill("2026");
   await quotaForm.getByRole("combobox", { name: "ประเภทการลา", exact: true }).selectOption(type.id);
   await quotaForm.getByLabel("สิทธิ์ทั้งหมด (วัน)", { exact: true }).fill("30");
@@ -215,9 +215,9 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await mutate(`/overtime-records/${ot.id}/approve`, { remark: "ตรวจแล้ว" });
   await page.goto("/finance");
   const financePicker = page.getByPlaceholder("ค้นหาชื่อหรือรหัสพนักงาน", { exact: true });
-  await financePicker.fill(`E_${suffix}`);
-  await expect(page.locator(`datalist option[value^="E_${suffix}"]`)).toHaveCount(1);
-  await financePicker.fill(`E_${suffix} · ทดสอบ ครบวงจร`);
+  await financePicker.fill(onboard.employee.employee_code);
+  await expect(page.locator(`datalist option[value^="${onboard.employee.employee_code}"]`)).toHaveCount(1);
+  await financePicker.fill(`${onboard.employee.employee_code} · ทดสอบ ครบวงจร`);
   const loanForm = page.locator("form").filter({ has: page.getByRole("button", { name: "สร้างเงินกู้", exact: true }) });
   await loanForm.getByLabel("ยอดเงินกู้", { exact: true }).fill("100.01");
   await loanForm.getByLabel("จำนวนงวด (1-5)", { exact: true }).fill("3");
@@ -310,10 +310,10 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   const adjustedPreview = await mutate<{ blockers: unknown[]; records: { net_pay: string }[] }>(`/payroll/periods/${targetPeriod.id}/preview`, {});
   expect(adjustedPreview.blockers).toEqual([]);
   // Confirmed policy: SS uses summed daily base earnings, excluding welfare/OT/adjustments.
-  expect(adjustedPreview.records[0].net_pay).toBe("2901.66");
+  expect(adjustedPreview.records[0].net_pay).toBe("2796.76");
   const adjustedLock = await mutate<{ records: { net_pay: string; items: { item_type: string; amount: string }[] }[] }>(`/payroll/periods/${targetPeriod.id}/lock`, {});
-  expect(adjustedLock.records[0].net_pay).toBe("2901.66");
-  expect(adjustedLock.records[0].items.find(item => item.item_type === "social_security")?.amount).toBe("135.00");
+  expect(adjustedLock.records[0].net_pay).toBe("2796.76");
+  expect(adjustedLock.records[0].items.find(item => item.item_type === "social_security")?.amount).toBe("130.01");
   expect(adjustedLock.records[0].items.filter(item => item.item_type === "adjustment")).toHaveLength(1);
   const originalAfterAdjustment = await page.request.get(`/api/v1/payroll/periods/${period.id}`);
   expect((await originalAfterAdjustment.json()).data.records[0].net_pay).toBe("2752.91");
@@ -366,13 +366,13 @@ test("configuration successor preserves history and readiness reveals simultaneo
   const suffix = Date.now().toString(36).toUpperCase();
   const shop = await create("/shops", { code: `CONFIG_${suffix}`, name: "ร้านทดสอบช่วงค่าคำนวณ" });
   const branch = await create("/branches", { shop_id: shop.id, code: `CONFIG_BR_${suffix}`, name: "สาขาทดสอบช่วงค่าคำนวณ" });
-  const original = await create("/payroll/configurations", { shop_id: shop.id, branch_id: branch.id, config_key: "STANDARD_WORK_DAYS", numeric_value: "26", unit: "days", effective_from: "2026-09-01" });
-  const successor = await create(`/payroll/configurations/${original.id}/successor`, { numeric_value: "25", effective_from: "2026-10-01" });
-  expect(successor.numeric_value).toBe("25.0000");
+  const original = await create("/payroll/configurations", { shop_id: shop.id, branch_id: branch.id, config_key: "ABSENCE_RATE", numeric_value: "1", unit: "multiplier", effective_from: "2026-09-01" });
+  const successor = await create(`/payroll/configurations/${original.id}/successor`, { numeric_value: "1.5", effective_from: "2026-10-01" });
+  expect(successor.numeric_value).toBe("1.5000");
   const history = await page.request.get(`/api/v1/payroll/configurations?shop_id=${shop.id}`);
   const configurations = (await history.json()).data;
-  expect(configurations.find((row: { id: string }) => row.id === original.id)).toMatchObject({ numeric_value: "26.0000", effective_to: "2026-09-30" });
-  const overlap = await page.request.post(`/api/v1/payroll/configurations/${original.id}/successor`, { data: { numeric_value: "24", effective_from: "2026-10-02" }, headers: { origin } });
+  expect(configurations.find((row: { id: string }) => row.id === original.id)).toMatchObject({ numeric_value: "1.0000", effective_to: "2026-09-30" });
+  const overlap = await page.request.post(`/api/v1/payroll/configurations/${original.id}/successor`, { data: { numeric_value: "2", effective_from: "2026-10-02" }, headers: { origin } });
   expect(overlap.status()).toBe(422);
   const period = await create("/payroll/periods", { shop_id: shop.id, period_year: 2026, period_month: 10, start_date: "2026-10-01", end_date: "2026-10-31" });
   const readiness = await page.request.get(`/api/v1/payroll/periods/${period.id}/readiness`);
@@ -386,7 +386,7 @@ test("configuration successor preserves history and readiness reveals simultaneo
   await page.getByText(/ความพร้อมของค่าคำนวณ \(/).click();
   const historyRow = page.getByRole("row").filter({ hasText: "2026-10-01 ถึง ปัจจุบัน" });
   await historyRow.getByText("เปลี่ยนค่าตั้งแต่วันที่", { exact: true }).click();
-  await historyRow.getByLabel(/^ค่าใหม่ \(/).fill("24");
+  await historyRow.getByLabel(/^ค่าใหม่ \(/).fill("2");
   await historyRow.getByLabel("วันที่เริ่มใช้ค่าใหม่", { exact: true }).fill("2026-11-01");
   await historyRow.getByRole("button", { name: "บันทึกช่วงใหม่", exact: true }).click();
   await expect(page.getByRole("cell", { name: /^2026-10-01 ถึง 2026-10-31/ })).toBeVisible();
