@@ -128,6 +128,35 @@ for (const role of ["SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"]) test(`UC07/0
         expect((await employee.request.patch(`/api/v1/${api}/${id}`, { headers, data: { overtime_date: "2037-01-01", overtime_type: "hourly", hours: "9", reason: "cannot edit approved" } })).status()).toBe(409);
       }
     }
+    await manager.goto("/leave"); await picker(manager, key);
+    const delegated = manager.locator("form").filter({ has: manager.getByRole("button", { name: "ส่งคำขอ", exact: true }) });
+    await delegated.getByRole("combobox", { name: "ประเภทการลา", exact: true }).selectOption(type.id);
+    await delegated.getByLabel("วันลาเริ่มต้น", { exact: true }).fill("2037-01-03");
+    await delegated.getByLabel("วันลาสิ้นสุด", { exact: true }).fill("2037-01-03");
+    await delegated.getByLabel("เหตุผล", { exact: true }).fill(`Delegated ${key}`);
+    const delegatedSubmit = manager.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/leave-requests" && r.request().method() === "POST");
+    await delegated.getByRole("button", { name: "ส่งคำขอ", exact: true }).click();
+    const delegatedResponse = await delegatedSubmit; expect(delegatedResponse.ok(), await delegatedResponse.text()).toBe(true);
+    await manager.reload(); await picker(manager, key);
+    await manager.getByRole("button", { name: "โหลดคำขอ", exact: true }).click();
+    await expect(manager.getByRole("article").filter({ hasText: `Delegated ${key}` })).toContainText("รอพิจารณา");
+    await employee.goto("/overtime");
+    const rejectedOtForm = employee.locator("form").filter({ has: employee.getByRole("heading", { name: "ส่งคำขอ OT ใหม่", exact: true }) });
+    await rejectedOtForm.getByLabel("วันที่ทำ OT", { exact: true }).fill("2037-01-04");
+    await rejectedOtForm.getByLabel("จำนวนชั่วโมง", { exact: true }).fill("1");
+    await rejectedOtForm.getByLabel("เหตุผล", { exact: true }).fill(`Reject ${key}`);
+    const rejectSubmit = employee.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/overtime-records" && r.request().method() === "POST");
+    await rejectedOtForm.getByRole("button", { name: "ส่งคำขอ", exact: true }).click();
+    const rejectResponse = await rejectSubmit; expect(rejectResponse.ok(), await rejectResponse.text()).toBe(true);
+    const rejectOt = (await rejectResponse.json()).data;
+    await manager.goto("/overtime"); await picker(manager, key);
+    await manager.getByRole("button", { name: "โหลดคำขอ OT", exact: true }).click();
+    const rejectedRow = manager.getByRole("article").filter({ hasText: `Reject ${key}` });
+    await rejectedRow.getByLabel("หมายเหตุการพิจารณา", { exact: true }).fill(`Rejected ${role}`);
+    await rejectedRow.getByRole("button", { name: "ไม่อนุมัติ", exact: true }).click();
+    await expect(manager.getByText("ไม่อนุมัติ OT แล้ว", { exact: true })).toBeVisible();
+    const rejectHistory = (await (await manager.request.get(`/api/v1/overtime-records/${rejectOt.id}/history`)).json()).data;
+    expect(rejectHistory.at(-1)).toMatchObject({ action: "rejected", remark: `Rejected ${role}` });
     await manager.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/current20-operations-${role}.png`, fullPage: true });
   } finally { await employeeContext.close(); await staffContext.close(); }
 });

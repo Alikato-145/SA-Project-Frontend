@@ -50,9 +50,9 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
   expect((await page.request.put(`/api/v1/employees/${member.id}/payment-destination`, { headers: { origin }, data: { payment_method: "transfer", promptpay_phone: "0812345678" } })).ok()).toBe(true);
   await open(page, f);
   const section = page.getByRole("region", { name: "เตรียมจ่ายเงินเดือน", exact: true });
-  for (const label of ["สมาชิกประกันสังคม", "เงินสด · ไม่เป็นสมาชิกประกันสังคม", "โอน PromptPay · ไม่เป็นสมาชิกประกันสังคม"])
+  for (const label of ["จ่ายแบบประกันสังคม", "จ่ายเงินสด", "จ่ายเงินโอน PromptPay"])
     await expect(section.getByRole("region", { name: label, exact: true })).toBeVisible();
-  expect(await section.locator("[data-payment-record]").count()).toBe(8);
+  await expect(section.locator("[data-payment-record]")).toHaveCount(8);
   await expect(section.getByText("ยอดสุทธิเป็นศูนย์ · ไม่มีภาระจ่าย", { exact: false })).toHaveCount(2);
   await section.getByRole("combobox", { name: "สาขาสำหรับเตรียมจ่าย", exact: true }).selectOption(f.branches[0]!);
   await expect(section.locator("[data-payment-record]")).toHaveCount(4);
@@ -98,7 +98,7 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
     await expect(form).not.toContainText("9876549999");
     if (employee.kind === "member") {
       await expect(row.getByRole("button", { name: /แสดง QR/ })).toHaveCount(0);
-      await expect(form).toContainText("กลุ่มสมาชิกประกันสังคมใช้บัญชีธนาคารที่ตรึงไว้ ไม่มี QR สำหรับกลุ่มนี้");
+      await expect(form).toContainText("รายการประกันสังคมแบบโอนใช้บัญชีธนาคารที่ตรึงไว้ ไม่มี QR สำหรับกลุ่มนี้");
     }
     await form.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/dual-destination-${employee.kind}.png` });
     await page.setViewportSize({ width: 390, height: 844 });

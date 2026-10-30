@@ -9,7 +9,7 @@ async function login(page: Page, username: string) {
   await expect(page).not.toHaveURL(/\/login$/);
 }
 
-test("HR/OWNER destinations stay separate from contact and employee/manager cannot edit", async ({ page, browser, baseURL }) => {
+test("HR/OWNER and employee can edit own destination, but other employee and manager cannot", async ({ page, browser, baseURL }) => {
   test.setTimeout(120000);
   const origin = new URL(baseURL!).origin;
   const employeeContext = await browser.newContext({ baseURL });
@@ -36,9 +36,26 @@ test("HR/OWNER destinations stay separate from contact and employee/manager cann
   expect((await invalid.json()).error.code).toBe("VALIDATION_ERROR");
   await employeePage.goto(`/employees/${self}`);
   await expect(employeePage.getByRole("heading", { name: "ช่องทางรับเงินเดือน", exact: true })).toBeVisible();
-  await expect(employeePage.getByRole("definition").filter({ hasText: "0812345678" })).toBeVisible();
-  await expect(employeePage.getByRole("button", { name: "บันทึกช่องทางรับเงิน", exact: true })).toHaveCount(0);
-  expect((await employeePage.request.put(`/api/v1/employees/${self}/payment-destination`, { headers: { origin }, data: { payment_method: "cash", promptpay_phone: null } })).status()).toBe(403);
+  await expect(employeePage.getByLabel("หมายเลขรับเงินพร้อมเพย์", { exact: true })).toHaveValue("0812345678");
+  await employeePage.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true }).selectOption("cash");
+  await employeePage.getByLabel("หมายเลขรับเงินพร้อมเพย์", { exact: true }).fill("");
+  await employeePage.getByRole("button", { name: "บันทึกช่องทางรับเงิน", exact: true }).click();
+  await expect(employeePage.getByRole("status").filter({ hasText: "บันทึกช่องทางรับเงินแล้ว" })).toBeVisible();
+  await employeePage.goto("/settings");
+  await employeePage.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true }).selectOption("social_security");
+  await employeePage.getByRole("button", { name: "บันทึกช่องทางรับเงิน", exact: true }).click();
+  await expect(employeePage.getByRole("status").filter({ hasText: "บันทึกช่องทางรับเงินแล้ว" })).toBeVisible();
+  await employeePage.reload();
+  await expect(employeePage.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true })).toHaveValue("social_security");
+  expect((await (await employeePage.request.get(`/api/v1/employees/${self}/payment-destination`)).json()).data).toMatchObject({ payment_method: "transfer", payment_category: "social_security" });
+  await employeePage.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true }).selectOption("transfer");
+  await employeePage.getByLabel("หมายเลขรับเงินพร้อมเพย์", { exact: true }).fill("0812345678");
+  await employeePage.getByRole("button", { name: "บันทึกช่องทางรับเงิน", exact: true }).click();
+  await expect(employeePage.getByRole("status").filter({ hasText: "บันทึกช่องทางรับเงินแล้ว" })).toBeVisible();
+  await employeePage.reload();
+  await expect(employeePage.getByRole("combobox", { name: "วิธีรับเงินเดือน", exact: true })).toHaveValue("transfer");
+  await expect(employeePage.getByLabel("หมายเลขรับเงินพร้อมเพย์", { exact: true })).toHaveValue("0812345678");
+  expect((await employeePage.request.put(`/api/v1/employees/999999/payment-destination`, { headers: { origin }, data: { payment_method: "cash", promptpay_phone: null } })).status()).toBe(403);
   expect((await employeePage.request.get(`/api/v1/employees/999999/payment-destination`)).status()).toBe(403);
   const managerContext = await browser.newContext({ baseURL });
   const managerPage = await managerContext.newPage();

@@ -24,6 +24,14 @@ const statuses: Record<EmployeeStatus, string> = {
   terminated: "สิ้นสุดการจ้าง",
 };
 
+async function loadInBatches<T, R>(items: T[], load: (item: T) => Promise<R[]>): Promise<R[]> {
+  const result: R[] = [];
+  for (let start = 0; start < items.length; start += 20) {
+    result.push(...(await Promise.all(items.slice(start, start + 20).map(load))).flat());
+  }
+  return result;
+}
+
 export default function EmployeesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -58,8 +66,8 @@ export default function EmployeesPage() {
         if (actor.grants.some(grant => grant.scope === "all" || grant.scope === "branch" || grant.scope === "department")) {
           try {
             const shops = await organizationApi.listShops();
-            const available = (await Promise.all(shops.map(shop => organizationApi.listBranches(shop.id)))).flat();
-            const availableDepartments = (await Promise.all(available.map(branch => organizationApi.listDepartments(branch.id)))).flat();
+            const available = await loadInBatches(shops, shop => organizationApi.listBranches(shop.id));
+            const availableDepartments = await loadInBatches(available, branch => organizationApi.listDepartments(branch.id));
             if (active) { setBranches(available); setDepartments(availableDepartments); }
           } catch { if (active) setChoicesError("โหลดรายชื่อสาขาและแผนกไม่สำเร็จ กรุณาโหลดหน้าใหม่"); }
         }

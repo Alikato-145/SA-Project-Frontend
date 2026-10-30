@@ -8,6 +8,7 @@ test("blank times are filled from the schedule and identified on the attendance 
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
   await paceLogin();
   await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
   await page.goto("/attendance");
   await page.getByLabel("ตั้งแต่", { exact: true }).fill("2026-11-04");
   await page.getByLabel("ถึง", { exact: true }).fill("2026-11-04");

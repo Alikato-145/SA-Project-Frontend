@@ -7,7 +7,7 @@ import type {
   WeeklyHolidayItem,
 } from "../contracts/types";
 
-export interface PaymentDestination { payment_method: "cash" | "transfer"; promptpay_phone: string | null }
+export interface PaymentDestination { payment_method: "cash" | "transfer"; promptpay_phone: string | null; payment_category?: "cash" | "transfer" | "social_security" | null }
 
 export interface EmployeeAssignment {
   is_social_security_member?: boolean;

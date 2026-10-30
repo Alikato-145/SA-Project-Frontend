@@ -8,11 +8,12 @@ test("missing calculation opens the correct branch and date range and saves it",
   await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password");
   await paceLogin();
   await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login$/);
   await page.goto("/payroll");
   await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption({ label: "DEMO · ร้านตัวอย่าง Haris" });
   await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
   const readiness = page.getByRole("region", { name: "ความพร้อมของงวด", exact: true });
-  const missing = readiness.getByRole("row").filter({ hasText: "อัตราหักเมื่อมาสาย" });
+  const missing = readiness.getByRole("row").filter({ hasText: "Demo Employee" }).filter({ hasText: "อัตราหักเมื่อมาสาย" });
   await expect(missing).toBeVisible();
   await missing.getByRole("button", { name: "ตั้งค่านี้" }).click();
   const form = page.locator("#configuration-form form");

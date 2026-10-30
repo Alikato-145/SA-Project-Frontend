@@ -131,6 +131,10 @@
   gap: 16px;
   margin: 0 0 1.25rem;
 }
+.frame > .sectionHead {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1.25rem;
+}
 .sectionHead h1,
 .sectionHead h2 {
   margin: 0;

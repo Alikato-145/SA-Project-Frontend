@@ -6,6 +6,7 @@ import { Feedback, PageHeader } from "@/components/workspace-ui";
 import { ApiClientError } from "@/lib/api/client";
 import { authApi } from "@/lib/auth/auth-api";
 import { organizationApi, type AccountSummary, type Branch, type Shop } from "@/lib/organization/organization-api";
+import { EmployeePaymentDestinationControls } from "@/features/identity-hr/employees/employee-payment-destination-controls";
 
 const field = "workspace-control";
 const button = "workspace-primary";
@@ -19,12 +20,14 @@ export default function SettingsPage() {
   const [grantBusy, setGrantBusy] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [ready, setReady] = useState(false); const [owner, setOwner] = useState(false);
+  const [ownEmployeeId, setOwnEmployeeId] = useState<string | null>(null);
 
 
   const reload = useCallback(async (selectedShopId = "") => {
     setError("");
     try {
       const actor = await authApi.current();
+      setOwnEmployeeId(actor.account.employee?.id ?? null);
       const isOwner = actor.grants.some((grant) => grant.role_code === "OWNER" && grant.scope === "all");
       setOwner(isOwner);
       if (!isOwner) return;
@@ -92,6 +95,7 @@ export default function SettingsPage() {
       <label className="mt-4 block text-sm">ยืนยันรหัสผ่านใหม่<input className={field} type="password" name="confirm_password" autoComplete="new-password" required minLength={8} maxLength={1024} /></label>
       <button className={`${button} mt-5`} disabled={changingPassword}>{changingPassword ? "กำลังเปลี่ยนรหัสผ่าน…" : "เปลี่ยนรหัสผ่าน"}</button>
     </form>
+    {ownEmployeeId && <div className="max-w-2xl"><EmployeePaymentDestinationControls employeeId={ownEmployeeId} canEdit /></div>}
     {owner ? <>
     <div className="border-t border-[var(--line)] pt-7"><h2 className="text-xl font-semibold">ตั้งค่าองค์กร</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">เตรียมร้าน สาขา บัญชี และขอบเขตบทบาทก่อนเริ่มรอบเงินเดือน</p></div>
     <section className="grid gap-6 xl:grid-cols-2"><form className="workspace-section min-w-0" onSubmit={submit((form) => organizationApi.createShop({ name: String(form.get("name")) }), "เพิ่มร้านแล้ว")}><h2 className="text-xl font-semibold">1. ร้าน</h2><label className="mt-4 block text-sm">ชื่อร้าน<input className={field} name="name" required maxLength={150} /></label><button className={`${button} mt-5`}>เพิ่มร้าน</button></form>

@@ -550,9 +550,9 @@ test("new account receives named branch scope, changes password and loses access
   await managed.close();
 });
 
-test("approved adjustments apply once without editing source payroll and negative net cannot lock", async ({ page, baseURL }) => {
+for (const actor of ["admin", "hr"]) test(`${actor} approved adjustments apply once without editing source payroll and negative net cannot lock`, async ({ page, baseURL }) => {
   test.setTimeout(90000);
-  await login(page, "admin");
+  await login(page, actor);
   const origin = new URL(baseURL!).origin;
   const create = async (path: string, data: unknown) => {
     const response = await page.request.post(`/api/v1${path}`, { data, headers: { origin } });

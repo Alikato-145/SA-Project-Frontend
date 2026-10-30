@@ -171,7 +171,7 @@ export function EmployeeReadView({
             }
           />
         ) : view === "profile" ? (
-          <><EmployeeProfile employee={state.employee} />{(canManage || selfEmployeeId === employeeId) && <EmployeePaymentDestinationControls employeeId={employeeId} canEdit={canManage} />}{(canManage || (state.employee.branch_id !== null && managerBranches.includes(state.employee.branch_id))) && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
+          <><EmployeeProfile employee={state.employee} />{(canManage || selfEmployeeId === employeeId) && <EmployeePaymentDestinationControls employeeId={employeeId} canEdit={canManage || selfEmployeeId === employeeId} />}{(canManage || (state.employee.branch_id !== null && managerBranches.includes(state.employee.branch_id))) && <EmployeeProfileControls key={refresh} employee={state.employee} onSaved={message => { setNotice(message); retry(); }} />}</>
         ) : (
           <section aria-label={titles[view]}>
             <div className={styles.sectionHead}>
