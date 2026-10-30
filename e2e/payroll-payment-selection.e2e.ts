@@ -15,6 +15,7 @@ test("HR changes an unprepared employee destination inside payroll and sees the 
   await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(f.shopId);
   await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
   await page.getByRole("button").filter({ hasText: "10/2095" }).click();
+  await page.getByText("ตัวเลือกเพิ่มเติม: เตรียมและบันทึกการจ่ายเงินเดือน", { exact: true }).click();
   const section = page.getByRole("region", { name: "เตรียมจ่ายเงินเดือน", exact: true });
   const row = section.locator(`[data-payment-record="${employee.recordId}"]`);
   await row.getByRole("button", { name: "เลือกช่องทางรับเงิน" }).click();
@@ -54,6 +55,7 @@ test("payment categories and branch summaries remain frozen when employee choice
   await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(f.shopId);
   await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click();
   await page.getByRole("button").filter({ hasText: "10/2095" }).click();
+  await page.getByText("ตัวเลือกเพิ่มเติม: เตรียมและบันทึกการจ่ายเงินเดือน", { exact: true }).click();
   const panel = page.getByRole("region", { name: "เตรียมจ่ายเงินเดือน", exact: true });
   await expect(panel.getByRole("region", { name: "จ่ายเงินสด" }).locator(`[data-payment-record="${member.recordId}"]`)).toBeVisible();
   await expect(panel.getByRole("region", { name: "จ่ายแบบประกันสังคม" }).locator(`[data-payment-record="${cash.recordId}"]`)).toBeVisible();

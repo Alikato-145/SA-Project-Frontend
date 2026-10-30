@@ -17,7 +17,7 @@ type Fixture = {
 };
 const fixture = () => JSON.parse(readFileSync(process.env.PAYMENT_FIXTURE_FILE ?? "/private/tmp/haris-task7-browser-fixture.json", "utf8")) as Fixture;
 const login = async (page: Page, user: string) => { await page.goto("/login"); await page.getByLabel("ชื่อผู้ใช้", { exact: true }).fill(user); await page.getByLabel("รหัสผ่าน", { exact: true }).fill("password"); await paceLogin(); await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click(); await expect(page).not.toHaveURL(/\/login$/); };
-const open = async (page: Page, f: Fixture) => { await page.goto("/payroll"); await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(f.shopId); await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click(); await page.getByRole("button").filter({ hasText: "10/2095" }).click(); await expect(page.getByRole("heading", { name: "เตรียมจ่ายเงินเดือนตามสาขา", exact: true })).toBeVisible(); };
+const open = async (page: Page, f: Fixture) => { await page.goto("/payroll"); await page.getByRole("combobox", { name: "ร้าน", exact: true }).selectOption(f.shopId); await page.getByRole("button", { name: "เปิดสมุดงาน", exact: true }).click(); await page.getByRole("button").filter({ hasText: "10/2095" }).click(); await page.getByText("ตัวเลือกเพิ่มเติม: เตรียมและบันทึกการจ่ายเงินเดือน", { exact: true }).click(); await expect(page.getByRole("heading", { name: "เตรียมจ่ายเงินเดือนตามสาขา", exact: true })).toBeVisible(); };
 // Independent implementation: no production encoder/checksum imported into browser evidence.
 const checksum = (text: string) => { let sum = 65535; for (const byte of new TextEncoder().encode(text)) {
   sum ^= byte * 256;

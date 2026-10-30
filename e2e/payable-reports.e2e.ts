@@ -11,26 +11,26 @@ test("HR and OWNER download both locked salary PDFs with selected filters, reloa
   const response=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/reports/${kind}-summary.pdf`,{timeout:20000});
   const saved=page.waitForEvent("download",{timeout:20000});await page.getByRole("button",{name:kind==="salary"?"สรุปเงินเดือน (PDF)":"สรุปเจ้าหนี้เงินเดือน (PDF)",exact:true}).click();const r=await response;expect(r.status()).toBe(200);expect(r.headers()["content-type"]).toBe("application/pdf");expect(r.headers()["cache-control"]).toBe("private, no-store");expect(new URL(r.url()).searchParams.get("branch_id")).toBe(branch??null);expect(new URL(r.url()).searchParams.get("department_id")).toBe(department??null);const file=`${evidence}/${user}-${kind}-${suffix}.pdf`;await(await saved).saveAs(file);expect(readFileSync(file).subarray(0,5).toString()).toBe("%PDF-");
  };
- for(const user of["hr","admin"]){await page.context().clearCookies();await login(page,user);await open(page);
+ for(const user of["hr","admin"]){await page.context().clearCookies();await login(page,user);await open(page);await page.getByText("ตัวเลือกเพิ่มเติม: รายงาน PDF และไฟล์ที่เตรียมจ่ายแล้ว",{exact:true}).click();
   await download(user,"salary","all");await download(user,"creditor","all");
   await page.getByRole("combobox",{name:"สาขา",exact:true}).selectOption(f.branches[1]!);await page.getByRole("combobox",{name:"แผนก",exact:true}).selectOption(f.departments[1]!);
   await download(user,"salary","filtered",f.branches[1],f.departments[1]);await download(user,"creditor","filtered",f.branches[1],f.departments[1]);
-  await page.reload();await open(page);await download(user,"salary","reload");await download(user,"creditor","reload");
+  await page.reload();await open(page);await page.getByText("ตัวเลือกเพิ่มเติม: รายงาน PDF และไฟล์ที่เตรียมจ่ายแล้ว",{exact:true}).click();await download(user,"salary","reload");await download(user,"creditor","reload");
   await page.screenshot({path:`${evidence}/${user}-reports-desktop.png`,fullPage:true,style:"nextjs-portal { visibility: hidden }"});await page.setViewportSize({width:390,height:844});await page.screenshot({path:`${evidence}/${user}-reports-mobile.png`,fullPage:true,style:"nextjs-portal { visibility: hidden }"});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.setViewportSize({width:1280,height:900});
  }
  // Unprepared records must give an actionable UI error, never a partial successful CSV.
- await page.getByRole("button",{name:"ไฟล์โอนเงินธนาคาร (CSV)",exact:true}).click();await expect(page.getByRole("alert").filter({hasText:"เตรียมจ่าย"})).toContainText("เตรียมจ่าย");
+ await page.getByRole("button",{name:"ไฟล์โอนเงินที่เตรียมจ่ายแล้ว (CSV)",exact:true}).click();await expect(page.getByRole("alert").filter({hasText:"เตรียมจ่าย"})).toContainText("เตรียมจ่าย");
  const prepared=await page.request.post(`/api/v1/payroll/periods/${f.periodId}/payments/prepare`,{headers:{origin},data:{}});expect(prepared.status(),await prepared.text()).toBe(200);
- await page.getByRole("button",{name:"ไฟล์โอนเงินธนาคาร (CSV)",exact:true}).click();await expect(page.getByRole("alert").filter({hasText:"QR"})).toContainText("QR");
+ await page.getByRole("button",{name:"ไฟล์โอนเงินที่เตรียมจ่ายแล้ว (CSV)",exact:true}).click();await expect(page.getByRole("alert").filter({hasText:"QR"})).toContainText("QR");
  // Live bank edits must not change the already prepared bank export.
  const changedBank=await page.request.patch(`/api/v1/employees/${f.employees[0]!.id}/bank-accounts/${f.employees[0]!.bankId}`,{headers:{origin},data:{bank_code:"006",account_number:"1111119999"}});expect(changedBank.status(),await changedBank.text()).toBe(200);
  for(const user of ["hr","admin"]){
-  await page.context().clearCookies();await login(page,user);await open(page);
+  await page.context().clearCookies();await login(page,user);await open(page);await page.getByText("ตัวเลือกเพิ่มเติม: รายงาน PDF และไฟล์ที่เตรียมจ่ายแล้ว",{exact:true}).click();
   await page.getByRole("combobox",{name:"สาขา",exact:true}).selectOption(f.branches[0]!);
   for(const kind of ["bank-transfer","social-security"]){
    const exported=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/reports/${kind}.csv`);
    const saved=page.waitForEvent("download");
-   await page.getByRole("button",{name:kind==="bank-transfer"?"ไฟล์โอนเงินธนาคาร (CSV)":"รายงานประกันสังคม (CSV)",exact:true}).click();
+   await page.getByRole("button",{name:kind==="bank-transfer"?"ไฟล์โอนเงินที่เตรียมจ่ายแล้ว (CSV)":"รายงานประกันสังคมตามตัวกรอง (CSV)",exact:true}).click();
    const response=await exported;expect(response.status()).toBe(200);expect(new URL(response.url()).searchParams.get("branch_id")).toBe(f.branches[0]);
    const file=`${evidence}/${user}-${kind}.csv`;await(await saved).saveAs(file);const csv=readFileSync(file,"utf8");
    if(kind==="bank-transfer"){expect(csv.trim().split(/\r?\n/)).toHaveLength(3);expect(csv).toContain('"004","0000001234"');expect(csv).toContain('"11400.00"');expect(csv).toContain('"3800.00"');expect(csv).not.toContain("1111119999");}
