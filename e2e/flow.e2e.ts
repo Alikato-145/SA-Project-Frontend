@@ -47,7 +47,7 @@ for (const [username, denied] of [["employee", "/payroll"], ["supervisor", "/acc
 test("Employee advance UI stays own-only and denies another employee through API", async ({ page }) => {
   await login(page, "employee");
   await page.goto("/finance");
-  await expect(page.getByRole("heading", { name: "เงินทดรองจ่ายและภาระหนี้ของฉัน", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "เงินทดรองจ่ายของฉัน", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0);
   const response = await page.request.get("/api/v1/advance-requests?employee_id=99999999");
@@ -218,30 +218,14 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await financePicker.fill(onboard.employee.employee_code);
   await expect(page.locator(`datalist option[value^="${onboard.employee.employee_code}"]`)).toHaveCount(1);
   await financePicker.fill(`${onboard.employee.employee_code} · ทดสอบ ครบวงจร`);
-  const loanForm = page.locator("form").filter({ has: page.getByRole("button", { name: "สร้างเงินกู้", exact: true }) });
-  await loanForm.getByLabel("ยอดเงินกู้", { exact: true }).fill("100.01");
-  await loanForm.getByLabel("จำนวนงวด (1-5)", { exact: true }).fill("3");
-  await loanForm.getByLabel("เดือนที่เริ่มชำระ", { exact: true }).fill("2026-09");
-  await loanForm.getByLabel("เหตุผล", { exact: true }).fill("ทดสอบค่างวด");
-  await loanForm.getByRole("button", { name: "สร้างเงินกู้", exact: true }).click();
-  await expect(page.getByText("สร้างเงินกู้และตารางผ่อนแล้ว", { exact: true })).toBeVisible();
-  const loanList = await page.request.get(`/api/v1/loans?employee_id=${employeeId}`);
-  expect((await loanList.json()).data[0].installments.map((row: { amount: string }) => row.amount)).toEqual(["33.34", "33.34", "33.33"]);
-  const debtTypeBody = { code: `DEBT_${suffix}`, name_th: "หนี้ทดสอบ", description: "ทดสอบประวัติ", is_active: true };
-  const debtType = await mutate<{ id: string }>("/debt-types", debtTypeBody);
-  const charge = await mutate<{ id: string }>("/debt-transactions", { employee_id: employeeId, debt_type_id: debtType.id, transaction_kind: "charge", amount: "25.00", description: "ทดสอบหนี้" });
-  await mutate(`/debt-transactions/${charge.id}/reverse`, { description: "ทดสอบกลับรายการโดยคงประวัติ" });
-  const ledger = await page.request.get(`/api/v1/debt-transactions?employee_id=${employeeId}`);
-  const debtLedger = (await ledger.json()).data;
-  expect(debtLedger.entries).toHaveLength(2);
-  expect(debtLedger.balance).toBe("0.00");
-  await mutate(`/debt-types/${debtType.id}`, { ...debtTypeBody, is_active: false }, "PATCH");
-  const inactiveDebt = await page.request.post("/api/v1/debt-transactions", { headers: { origin }, data: { employee_id: employeeId, debt_type_id: debtType.id, transaction_kind: "charge", amount: "25.00", description: "ต้องถูกปฏิเสธ" } });
-  expect((await inactiveDebt.json()).error.code).toBe("DEBT_TYPE_UNAVAILABLE");
+  await page.getByRole("button", { name: "โหลดข้อมูลการเงิน", exact: true }).click();
+  await expect(page.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "บัญชีหนี้", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "เงินกู้", exact: true })).toHaveCount(0);
   const period = await mutate<{ id: string }>("/payroll/periods", { shop_id: shop.id, period_year: 2026, period_month: 9, start_date: "2026-09-01", end_date: "2026-09-30" });
   const preview = await mutate<{ blockers: unknown[]; records: { net_pay: string }[] }>(`/payroll/periods/${period.id}/preview`, {});
   expect(preview.blockers).toEqual([]);
-  expect(preview.records[0].net_pay).toBe("2752.91");
+  expect(preview.records[0].net_pay).toBe("2786.25");
   await mutate(`/payroll/periods/${period.id}/lock`, {});
   const persisted = await page.request.get(`/api/v1/payroll/periods/${period.id}`);
   const locked = (await persisted.json()).data;
@@ -264,16 +248,16 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
     expect(exported.status(), await exported.text()).toBe(200);
     expect(exported.headers()["content-type"]).toContain("text/csv");
     const csv = await exported.text();
-    expect(csv).toContain(kind === "bank-transfer" ? '"2752.91"' : '"2600.00","130.00"');
+    expect(csv).toContain(kind === "bank-transfer" ? '"2786.25"' : '"2600.00","130.00"');
     if (kind === "bank-transfer") expect(csv).toContain('"0000000000"');
     await test.info().attach(`${kind}-frozen.csv`, { body: Buffer.from(csv), contentType: "text/csv" });
   }
   const summary = await page.request.get(`/api/v1/reports/summary?period_id=${period.id}`);
   expect(summary.status(), await summary.text()).toBe(200);
-  expect((await summary.json()).data.payroll[0].net).toBe("2752.91");
+  expect((await summary.json()).data.payroll[0].net).toBe("2786.25");
   const scopedSummary = await page.request.get(`/api/v1/reports/summary?period_id=${period.id}&branch_id=${branch.id}&department_id=${department.id}`);
   expect(scopedSummary.status(), await scopedSummary.text()).toBe(200);
-  expect((await scopedSummary.json()).data.payroll[0].net).toBe("2752.91");
+  expect((await scopedSummary.json()).data.payroll[0].net).toBe("2786.25");
   const firstPage = await page.request.get(`/api/v1/reports/details?period_id=${period.id}&kind=attendance&branch_id=${branch.id}&page=1&page_size=20`);
   const firstDetails = await firstPage.json();
   expect(firstDetails.total).toBe(26);expect(firstDetails.data).toHaveLength(20);
@@ -281,7 +265,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   expect((await nextPage.json()).data).toHaveLength(6);
   const summaryExport = await page.request.get(`/api/v1/reports/summary.csv?period_id=${period.id}&department_id=${department.id}`);
   expect(summaryExport.status(), await summaryExport.text()).toBe(200);
-  expect(await summaryExport.text()).toContain('"2752.91"');
+  expect(await summaryExport.text()).toContain('"2786.25"');
 
   const targetPeriod = await mutate<{ id: string }>("/payroll/periods", { shop_id: shop.id, period_year: 2026, period_month: 10, start_date: "2026-10-01", end_date: "2026-10-31" });
   await page.goto("/payroll");
@@ -310,13 +294,13 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   const adjustedPreview = await mutate<{ blockers: unknown[]; records: { net_pay: string }[] }>(`/payroll/periods/${targetPeriod.id}/preview`, {});
   expect(adjustedPreview.blockers).toEqual([]);
   // Confirmed policy: SS uses summed daily base earnings, excluding welfare/OT/adjustments.
-  expect(adjustedPreview.records[0].net_pay).toBe("2796.76");
+  expect(adjustedPreview.records[0].net_pay).toBe("2830.10");
   const adjustedLock = await mutate<{ records: { net_pay: string; items: { item_type: string; amount: string }[] }[] }>(`/payroll/periods/${targetPeriod.id}/lock`, {});
-  expect(adjustedLock.records[0].net_pay).toBe("2796.76");
+  expect(adjustedLock.records[0].net_pay).toBe("2830.10");
   expect(adjustedLock.records[0].items.find(item => item.item_type === "social_security")?.amount).toBe("130.01");
   expect(adjustedLock.records[0].items.filter(item => item.item_type === "adjustment")).toHaveLength(1);
   const originalAfterAdjustment = await page.request.get(`/api/v1/payroll/periods/${period.id}`);
-  expect((await originalAfterAdjustment.json()).data.records[0].net_pay).toBe("2752.91");
+  expect((await originalAfterAdjustment.json()).data.records[0].net_pay).toBe("2786.25");
   const ownPdf = await employeePage.request.get(`${baseURL}/api/v1/payslips/${pdf.id}/download`);
   expect(ownPdf.status()).toBe(200);
   const blockedWrite = await page.request.post("/api/v1/work-day-records", { headers: { origin }, data: { employee_id: employeeId, branch_id: branch.id, work_date: "2026-09-10", status: "absent", late_minutes: 0, is_deductible: true } });

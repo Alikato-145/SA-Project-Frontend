@@ -19,3 +19,11 @@ test('groups monetary rows by category and direction without losing satang', () 
  const grouped = groupPayrollMoney(rows);
  expect(grouped.map(group => [group.itemType,group.direction,group.total,group.items.length])).toEqual([['base_salary','earning','1538.46',2],['adjustment','deduction','0.01',1],['adjustment','earning','0.02',1]]);
 });
+
+test('preserves historical loan and debt deductions in locked payroll details', () => {
+ const rows = [item('Historic loan', {item_type:'loan_installment', direction:'deduction', amount:'125.50'}), item('Historic debt', {item_type:'debt', direction:'deduction', amount:'30.25'})];
+ expect(groupPayrollMoney(rows).map(group => [group.itemType, group.direction, group.total, group.items[0]?.description])).toEqual([
+  ['loan_installment','deduction','125.50','Historic loan'],
+  ['debt','deduction','30.25','Historic debt'],
+ ]);
+});

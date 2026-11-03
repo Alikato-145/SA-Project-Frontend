@@ -3,7 +3,7 @@ import { useEffect,useState } from "react";
 import Link from "next/link";
 import { apiRequestPage,type ApiPage } from "@/lib/api/client";
 import { Feedback,formatThaiDate,formatThaiMoney,thaiLabel } from "./workspace-ui";
-export type ReportKind="attendance"|"leave"|"overtime"|"debt"|"payroll";
+export type ReportKind="attendance"|"leave"|"overtime"|"payroll";
 type Row={id:string;employee_id:string;employee_code:string;employee_name:string;date:string;status:string;quantity:string|null;quantity_unit:string|null;amount:string|null};
 export function ReportDetails({periodId,kind,branchId,departmentId,onClose}:{periodId:string;kind:ReportKind;branchId:string;departmentId:string;onClose():void}) {
   const [page,setPage]=useState(1);
