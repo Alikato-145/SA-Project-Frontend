@@ -450,14 +450,14 @@ test("schedule changes preserve history and attendance calendar supports clock c
   await expect(page.getByRole("button").filter({ hasText: "ยังไม่มีข้อมูล" }).first()).toBeVisible();
   await page.getByLabel("วันที่ทำงาน", { exact: true }).fill("2026-09-01");
   await expect(page.getByLabel("สาขาตามประวัติการจ้าง", { exact: true })).toHaveValue("สาขาทดสอบลงเวลา");
-  await page.getByLabel("เวลาเข้างาน", { exact: true }).fill("2026-09-01T09:07");
+  await page.getByLabel("เวลาเข้างาน", { exact: true }).fill("09:07");
   await expect(page.locator("form").filter({ has: page.getByRole("heading", { name: "บันทึกวันทำงาน", exact: true }) }).locator("input[name=lateMinutes]")).toHaveValue("2");
-  await page.getByLabel("เวลาออกงาน", { exact: true }).fill("2026-09-01T18:00");
+  await page.getByLabel("เวลาออกงาน", { exact: true }).fill("18:00");
   await page.getByRole("button", { name: "บันทึกวันทำงาน", exact: true }).click();
   await expect(page.getByText("บันทึกวันทำงานแล้ว", { exact: true })).toBeVisible();
   await page.getByRole("combobox", { name: "รายการวันทำงาน", exact: true }).selectOption({ index: 1 });
-  await expect(page.getByLabel("เวลาออกงาน (Asia/Bangkok)", { exact: true })).toHaveValue("2026-09-01T18:00");
-  await page.getByLabel("เวลาออกงาน (Asia/Bangkok)", { exact: true }).fill("2026-09-01T18:30");
+  await expect(page.getByLabel("เวลาออกงาน (Asia/Bangkok)", { exact: true })).toHaveValue("18:00");
+  await page.getByLabel("เวลาออกงาน (Asia/Bangkok)", { exact: true }).fill("18:30");
   await page.getByLabel("เหตุผล / หมายเหตุ", { exact: true }).fill("แก้เวลาออกงานที่บันทึกคลาดเคลื่อน");
   await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
   await expect(page.getByText("บันทึกการแก้ไขแล้ว", { exact: true })).toBeVisible();

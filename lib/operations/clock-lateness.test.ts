@@ -8,3 +8,7 @@ test("clock entry follows historical start and grace boundaries without dependin
   expect(clockLateMinutes("", "09:00", 5)).toBeNull();
   expect(clockLateMinutes("2026-09-01T25:00", "09:00", 5)).toBeNull();
 });
+
+test("accepts time-only inputs from the attendance form", () => {
+  expect(clockLateMinutes("09:07", "09:00", 5)).toBe(2);
+});

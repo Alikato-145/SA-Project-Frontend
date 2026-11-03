@@ -50,8 +50,8 @@ test("UC07 EMPLOYEE submits and corrects own manual attendance in UI, reloads pe
     await entry.locator('select[name="status"]').selectOption("absent");
     await expect(entry.getByLabel("นาทีที่มาสาย", { exact: true })).toHaveAttribute("readonly", "");
     await entry.locator('select[name="status"]').selectOption("present");
-    await entry.getByLabel("เวลาเข้างาน", { exact: true }).fill(`${workDate}T09:00`);
-    await entry.getByLabel("เวลาออกงาน", { exact: true }).fill(`${workDate}T18:00`);
+    await entry.getByLabel("เวลาเข้างาน", { exact: true }).fill("09:00");
+    await entry.getByLabel("เวลาออกงาน", { exact: true }).fill("18:00");
     const submitted = employee.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/work-day-records" && r.request().method() === "POST");
     await entry.getByRole("button", { name: "บันทึกวันทำงาน", exact: true }).click();
     const response = await submitted; expect(response.ok(), await response.text()).toBe(true);
@@ -60,7 +60,7 @@ test("UC07 EMPLOYEE submits and corrects own manual attendance in UI, reloads pe
     await expect(employee.getByText("บันทึกวันทำงานแล้ว", { exact: true })).toBeVisible();
     const correction = employee.locator("form").filter({ has: employee.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }) });
     await correction.locator('select[name="recordId"]').selectOption(record.id);
-    await correction.getByLabel("เวลาเข้างาน (Asia/Bangkok)", { exact: true }).fill(`${workDate}T09:20`);
+    await correction.getByLabel("เวลาเข้างาน (Asia/Bangkok)", { exact: true }).fill("09:20");
     await expect(correction.getByLabel("นาทีที่มาสาย", { exact: true })).toHaveValue("15");
     await correction.getByLabel("เหตุผล / หมายเหตุ", { exact: true }).fill("แก้เวลาเข้าจริงเป็นเก้าโมงยี่สิบ");
     const corrected = employee.waitForResponse(r => new URL(r.url()).pathname === `/api/v1/work-day-records/${record.id}` && r.request().method() === "PATCH");

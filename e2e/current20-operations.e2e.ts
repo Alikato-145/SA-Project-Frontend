@@ -66,12 +66,12 @@ for (const role of ["SUPERVISOR", "BRANCH_MANAGER", "HR", "OWNER"]) test(`UC07/0
     const attendance = manager.locator("form").filter({ has: manager.getByRole("button", { name: "บันทึกวันทำงาน", exact: true }) });
     await attendance.getByLabel("วันที่ทำงาน", { exact: true }).fill("2037-01-01");
     await expect(attendance.getByLabel("สาขาตามประวัติการจ้าง", { exact: true })).toHaveValue(key);
-    await attendance.getByLabel("เวลาเข้างาน", { exact: true }).fill("2037-01-01T09:00");
-    await attendance.getByLabel("เวลาออกงาน", { exact: true }).fill("2037-01-01T18:00");
+    await attendance.getByLabel("เวลาเข้างาน", { exact: true }).fill("09:00");
+    await attendance.getByLabel("เวลาออกงาน", { exact: true }).fill("18:00");
     await attendance.getByRole("button", { name: "บันทึกวันทำงาน", exact: true }).click();
     await expect(manager.getByText("บันทึกวันทำงานแล้ว", { exact: true })).toBeVisible();
     await manager.getByRole("combobox", { name: "รายการวันทำงาน", exact: true }).selectOption({ index: 1 });
-    await manager.getByLabel("เวลาออกงาน (Asia/Bangkok)", { exact: true }).fill("2037-01-01T18:30");
+    await manager.getByLabel("เวลาออกงาน (Asia/Bangkok)", { exact: true }).fill("18:30");
     await manager.getByLabel("เหตุผล / หมายเหตุ", { exact: true }).fill(`Correction ${key}`);
     await manager.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
     await expect(manager.getByText("บันทึกการแก้ไขแล้ว", { exact: true })).toBeVisible();
