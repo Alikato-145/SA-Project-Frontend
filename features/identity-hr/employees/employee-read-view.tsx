@@ -195,7 +195,7 @@ export function EmployeeReadView({
                 {(state.related as EmployeeAssignment[]).map((item) => (
                   <li className={styles.timelineItem} key={item.id}>
                     <div className={styles.sectionHead}>
-                      <h3>ตำแหน่ง #{item.position_id}</h3>
+                      <h3>ตำแหน่ง {item.position_name ?? "ยังไม่มีข้อมูล"}</h3>
                       {item.effective_to === null && (
                         <StatusBadge>ช่วงปัจจุบัน</StatusBadge>
                       )}
@@ -204,7 +204,7 @@ export function EmployeeReadView({
                       <div>
                         <dt>สาขา / แผนก</dt>
                         <dd>
-                          #{item.branch_id} / #{item.department_id}
+                          {item.branch_name ?? "ยังไม่มีข้อมูล"} / {item.department_name ?? "ยังไม่มีข้อมูล"}
                         </dd>
                       </div>
                       <div>

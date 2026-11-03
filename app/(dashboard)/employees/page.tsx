@@ -244,8 +244,7 @@ export default function EmployeesPage() {
                         </StatusBadge>
                       </div>
                       <p className={styles.muted}>
-                        สาขา #{employee.branch_id ?? "ไม่ระบุ"} · แผนก #
-                        {employee.department_id ?? "ไม่ระบุ"}
+                        สาขา {employee.branch_name ?? "ไม่ระบุ"} · แผนก {employee.department_name ?? "ไม่ระบุ"}
                       </p>
                     </article>
                   </li>

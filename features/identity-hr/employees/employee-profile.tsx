@@ -77,25 +77,19 @@ export function EmployeeProfile({ employee }: { employee?: EmployeeSummary }) {
             <div>
               <dt>สาขา</dt>
               <dd>
-                {employee.branch_id
-                  ? `#${employee.branch_id}`
-                  : "ยังไม่มีข้อมูล"}
+                {employee.branch_name ?? "ยังไม่มีข้อมูล"}
               </dd>
             </div>
             <div>
               <dt>แผนก</dt>
               <dd>
-                {employee.department_id
-                  ? `#${employee.department_id}`
-                  : "ยังไม่มีข้อมูล"}
+                {employee.department_name ?? "ยังไม่มีข้อมูล"}
               </dd>
             </div>
             <div>
               <dt>ตำแหน่ง</dt>
               <dd>
-                {employee.position_id
-                  ? `#${employee.position_id}`
-                  : "ยังไม่มีข้อมูล"}
+                {employee.position_name ?? "ยังไม่มีข้อมูล"}
               </dd>
             </div>
             <OptionalFact

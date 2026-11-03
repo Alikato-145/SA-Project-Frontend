@@ -10,6 +10,9 @@ import type {
 export interface PaymentDestination { payment_method: "cash" | "transfer"; promptpay_phone: string | null; payment_category?: "cash" | "transfer" | "social_security" | null }
 
 export interface EmployeeAssignment {
+  branch_name?: string | null;
+  department_name?: string | null;
+  position_name?: string | null;
   is_social_security_member?: boolean;
   id: string;
   employee_id: string;
