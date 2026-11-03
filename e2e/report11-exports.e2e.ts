@@ -13,6 +13,7 @@ test("report UC10 and UC12 expose locked bank export and per-employee branch CSV
   await page.goto("/reports");
   await page.getByRole("combobox",{name:"ร้าน",exact:true}).selectOption(fixture.shopId);
   await page.getByRole("combobox",{name:"งวดเงินเดือน",exact:true}).selectOption(fixture.periodId);
+  await expect(page.getByRole("button",{name:"รายการจ่ายเงินสด (CSV)",exact:true})).toBeDisabled();
   await page.getByRole("button",{name:"ไฟล์โอนเงินธนาคาร (CSV)",exact:true}).click();
   await expect(page.getByRole("alert").filter({hasText:"บัญชีธนาคารหลัก"})).toBeVisible();
   for (const employee of fixture.employees.filter(item => item.bankId === null)) {
@@ -27,8 +28,10 @@ test("report UC10 and UC12 expose locked bank export and per-employee branch CSV
   await page.getByRole("combobox",{name:"สาขา",exact:true}).selectOption(fixture.branches[0]!);
   const response=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/reports/employee-salary.csv");
   const download=page.waitForEvent("download");
-  await page.getByRole("button",{name:"ส่งออกรายชื่อและยอดเงินเดือน (CSV)",exact:true}).click();
-  expect((await response).status()).toBe(200);
+  await page.getByRole("button",{name:"รายการจ่ายเงินสด (CSV)",exact:true}).click();
+  const cashResponse = await response;
+  expect(cashResponse.status()).toBe(200);
+  expect(new URL(cashResponse.url()).searchParams.get("branch_id")).toBe(fixture.branches[0]);
   const path=await (await download).path();expect(path).toBeTruthy();
   const csv=readFileSync(path!,"utf8");expect(csv).toContain(fixture.employees[0]!.code);expect(csv).not.toContain(fixture.employees[3]!.code);
   const socialResponse=page.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/reports/social-security.csv");

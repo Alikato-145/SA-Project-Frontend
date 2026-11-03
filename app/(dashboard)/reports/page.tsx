@@ -43,10 +43,10 @@ export default function ReportsPage() {
     try { await work(); } catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดรายงานไม่สำเร็จ"); }
     finally { setBusy(false); }
   };
-  const download = (kind: "bank-transfer" | "period-bank-transfer" | "social-security" | "social-security-all" | "salary-summary" | "creditor-summary") => {
-    if (!period) return;
+  const download = (kind: "cash" | "bank-transfer" | "period-bank-transfer" | "social-security" | "social-security-all" | "salary-summary" | "creditor-summary") => {
+    if (!period || (kind === "cash" && !branchId)) return;
     const extension = kind.endsWith("summary") ? "pdf" : "csv";
-    const endpoint = kind === "social-security-all" ? "social-security" : kind;
+    const endpoint = kind === "cash" ? "employee-salary" : kind === "social-security-all" ? "social-security" : kind;
     void run(async () => { await downloadApiFile(`/v1/reports/${endpoint}.${extension}?${kind === "period-bank-transfer" || kind === "social-security-all" ? new URLSearchParams({ period_id: period.id }) : summaryQuery()}`, `${kind}-${period.period_year}-${period.period_month}.${extension}`); setMessage("ดาวน์โหลดไฟล์แล้ว"); });
   };
   return <div className="space-y-7"><PageHeader title="รายงานและส่งออก" description="ตรวจสรุปการลงเวลา การลา OT และเงินเดือน ส่งออก PDF และ CSV ได้เมื่อรอบถูกล็อกแล้ว" />
@@ -59,8 +59,9 @@ export default function ReportsPage() {
       </div>
       <div className="border-t border-[var(--line)] pt-4 space-y-3">
         <h3 className="font-semibold">ส่งออกไฟล์สำหรับดำเนินการภายนอก</h3>
-        <p className="text-sm text-[var(--muted)]">เลือกไฟล์โอนเงินธนาคารหรือรายงานประกันสังคมของงวดที่ล็อกแล้ว การดาวน์โหลดไม่ยืนยันว่าจ่ายเงินหรือยื่นประกันสังคมสำเร็จ</p>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy || period?.status !== "locked"} onClick={() => download("period-bank-transfer")}>ไฟล์โอนเงินธนาคาร (CSV)</Button><Button variant="outline" disabled={busy || period?.status !== "locked"} onClick={() => download("social-security-all")}>รายงานประกันสังคม (CSV)</Button></div>
+        <p className="text-sm text-[var(--muted)]">เลือกส่งออกรายการสำหรับจัดจ่ายเงินสดตามสาขา หรือไฟล์โอนเงินธนาคารและรายงานประกันสังคมของงวดที่ล็อกแล้ว การดาวน์โหลดไม่ยืนยันว่าจ่ายเงินหรือยื่นประกันสังคมสำเร็จ</p>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy || !period || !branchId} onClick={() => download("cash")}>รายการจ่ายเงินสด (CSV)</Button><Button variant="outline" disabled={busy || period?.status !== "locked"} onClick={() => download("period-bank-transfer")}>ไฟล์โอนเงินธนาคาร (CSV)</Button><Button variant="outline" disabled={busy || period?.status !== "locked"} onClick={() => download("social-security-all")}>รายงานประกันสังคม (CSV)</Button></div>
+        <p className="text-sm text-[var(--muted)]">เงินสด: เลือกสาขาก่อนส่งออก ไฟล์แสดงรหัส ชื่อพนักงาน และยอดสุทธิตามสาขาและแผนกที่เลือก เพื่อนำไปคัดแยกรายการจ่ายเงินสดภายนอกระบบ</p>
         {period && period.status !== "locked" && <p className="text-sm text-amber-800">ต้องล็อกรอบเงินเดือนก่อนส่งออกไฟล์โอนเงินหรือรายงานประกันสังคม</p>}
         <p className="text-sm text-[var(--muted)]">ไฟล์ธนาคารครอบคลุมทั้งรอบ ใช้บัญชีหลักปัจจุบันและรวมรายการที่อาจบันทึกว่าจ่ายแล้ว กรุณาตรวจยอดและสถานะก่อนนำไปจ่าย รายงานประกันสังคมครอบคลุมทั้งรอบเช่นกัน</p>
       </div>
