@@ -20,7 +20,7 @@ const navigation = [
     ...identityHrRoutes.filter((item) => item.href !== "/employees"),
   ] },
   { label: "การเงิน", items: [
-    { label: "เงินทดรองจ่าย", href: "/finance" },
+    { label: "เบิกเงินล่วงหน้า", href: "/finance" },
     { label: "เงินเดือน", href: "/payroll" },
     { label: "สลิปเงินเดือน", href: "/payslips" },
     { label: "รายงาน", href: "/reports" },

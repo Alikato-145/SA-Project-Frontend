@@ -47,8 +47,8 @@ for (const [username, denied] of [["employee", "/payroll"], ["supervisor", "/acc
 test("Employee advance UI stays own-only and denies another employee through API", async ({ page }) => {
   await login(page, "employee");
   await page.goto("/finance");
-  await expect(page.getByRole("heading", { name: "เงินทดรองจ่ายของฉัน", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "เบิกเงินล่วงหน้าของฉัน", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ส่งคำขอเบิกเงินล่วงหน้า", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0);
   const response = await page.request.get("/api/v1/advance-requests?employee_id=99999999");
   expect(response.status()).toBe(403);
@@ -219,7 +219,7 @@ test("fresh organization completes onboarding, evidence, approval, OT, payroll, 
   await expect(page.locator(`datalist option[value^="${onboard.employee.employee_code}"]`)).toHaveCount(1);
   await financePicker.fill(`${onboard.employee.employee_code} · ทดสอบ ครบวงจร`);
   await page.getByRole("button", { name: "โหลดข้อมูลการเงิน", exact: true }).click();
-  await expect(page.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ส่งคำขอเบิกเงินล่วงหน้า", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "บัญชีหนี้", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "เงินกู้", exact: true })).toHaveCount(0);
   const period = await mutate<{ id: string }>("/payroll/periods", { shop_id: shop.id, period_year: 2026, period_month: 9, start_date: "2026-09-01", end_date: "2026-09-30" });

@@ -24,16 +24,16 @@ for(const [finance,decision] of [["hr","reject"],["admin","approve"]] as const)t
  const context=await browser.newContext({baseURL});
  try {
   const employee=await context.newPage();await login(employee,key.toLowerCase(),onboard.temporary_password);await employee.goto("/finance");
-  const form=employee.locator("form").filter({has:employee.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true})});
-  const reason=form.getByLabel("เหตุผลที่ขอเงินทดรองจ่าย",{exact:true});await expect(reason).toBeVisible();await expect(reason).toHaveAttribute("maxlength","1000");
+  const form=employee.locator("form").filter({has:employee.getByRole("button",{name:"ส่งคำขอเบิกเงินล่วงหน้า",exact:true})});
+  const reason=form.getByLabel("เหตุผลที่ขอเบิกเงินล่วงหน้า",{exact:true});await expect(reason).toBeVisible();await expect(reason).toHaveAttribute("maxlength","1000");
   await form.getByLabel("จำนวนเงิน",{exact:true}).fill("100.01");
   let posts=0;employee.on("request",r=>{if(new URL(r.url()).pathname==="/api/v1/advance-requests"&&r.method()==="POST")posts++;});
-  await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();expect(posts).toBe(0);
-  await reason.fill("   ");await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();await expect(employee.getByText("กรอกเหตุผลที่ขอเงินทดรองจ่าย 1–1000 ตัวอักษร โดยไม่เว้นว่างทั้งหมด",{exact:true})).toBeVisible();expect(posts).toBe(0);
-  await reason.evaluate((node:HTMLTextAreaElement)=>node.removeAttribute("maxlength"));await reason.fill("x".repeat(1001));await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();expect(posts).toBe(0);
+  await form.getByRole("button",{name:"ส่งคำขอเบิกเงินล่วงหน้า",exact:true}).click();expect(posts).toBe(0);
+  await reason.fill("   ");await form.getByRole("button",{name:"ส่งคำขอเบิกเงินล่วงหน้า",exact:true}).click();await expect(employee.getByText("กรอกเหตุผลที่ขอเบิกเงินล่วงหน้า 1–1000 ตัวอักษร โดยไม่เว้นว่างทั้งหมด",{exact:true})).toBeVisible();expect(posts).toBe(0);
+  await reason.evaluate((node:HTMLTextAreaElement)=>node.removeAttribute("maxlength"));await reason.fill("x".repeat(1001));await form.getByRole("button",{name:"ส่งคำขอเบิกเงินล่วงหน้า",exact:true}).click();expect(posts).toBe(0);
   for(const bad of [undefined,null,""," \t\n ","x".repeat(1001)]){const result=await employee.request.post("/api/v1/advance-requests",{headers,data:{employee_id:onboard.employee.id,amount:"100.01",...(bad===undefined?{}:{reason:bad})}});expect(result.status()).toBe(422);expect((await result.json()).error.code).toBe("VALIDATION_ERROR");}
   const reasonText=`Emergency household expenses ${key}`;await reason.fill(`  ${reasonText}  `);
-  const submitted=employee.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/advance-requests"&&r.request().method()==="POST");await form.getByRole("button",{name:"ส่งคำขอเงินทดรองจ่าย",exact:true}).click();const response=await submitted;
+  const submitted=employee.waitForResponse(r=>new URL(r.url()).pathname==="/api/v1/advance-requests"&&r.request().method()==="POST");await form.getByRole("button",{name:"ส่งคำขอเบิกเงินล่วงหน้า",exact:true}).click();const response=await submitted;
   if(day<20){
    expect(response.status()).toBe(422);expect((await response.json()).error.code).toBe("ADVANCE_INELIGIBLE_DATE");
    await employee.reload();await employee.getByRole("button",{name:"โหลดข้อมูลการเงิน",exact:true}).click();
@@ -52,10 +52,10 @@ for(const [finance,decision] of [["hr","reject"],["admin","approve"]] as const)t
   for(const bad of [undefined,null,""," \t\n ","x".repeat(1001)]){const result=await page.request.post(`/api/v1/advance-requests/${advance.id}/reject`,{headers,data:bad===undefined?{}:{note:bad}});expect(result.status()).toBe(422);expect((await result.json()).error.code).toBe("VALIDATION_ERROR");}
   const note=`Repayment capacity review ${key}`;
   if(decision==="reject"){
-   const input=row.getByLabel("เหตุผลที่ไม่อนุมัติเงินทดรองจ่าย",{exact:true});await expect(input).toHaveAttribute("maxlength","1000");
+   const input=row.getByLabel("เหตุผลที่ไม่อนุมัติเบิกเงินล่วงหน้า",{exact:true});await expect(input).toHaveAttribute("maxlength","1000");
    let rejectionPosts=0;page.on("request",r=>{if(new URL(r.url()).pathname===`/api/v1/advance-requests/${advance.id}/reject`&&r.method()==="POST")rejectionPosts++;});
    await row.getByRole("button",{name:"ไม่อนุมัติ",exact:true}).click();await expect(row).toContainText("รอพิจารณา");expect(rejectionPosts).toBe(0);
-   await input.fill("   ");await row.getByRole("button",{name:"ไม่อนุมัติ",exact:true}).click();await expect(page.getByText("กรอกเหตุผลที่ไม่อนุมัติเงินทดรองจ่าย 1–1000 ตัวอักษร โดยไม่เว้นว่างทั้งหมด",{exact:true})).toBeVisible();expect(rejectionPosts).toBe(0);
+   await input.fill("   ");await row.getByRole("button",{name:"ไม่อนุมัติ",exact:true}).click();await expect(page.getByText("กรอกเหตุผลที่ไม่อนุมัติเบิกเงินล่วงหน้า 1–1000 ตัวอักษร โดยไม่เว้นว่างทั้งหมด",{exact:true})).toBeVisible();expect(rejectionPosts).toBe(0);
    await input.evaluate((node:HTMLInputElement)=>node.removeAttribute("maxlength"));await input.fill("x".repeat(1001));await row.getByRole("button",{name:"ไม่อนุมัติ",exact:true}).click();await expect(row).toContainText("รอพิจารณา");expect(rejectionPosts).toBe(0);
    await input.fill(`  ${note}  `);
   }

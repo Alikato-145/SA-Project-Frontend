@@ -169,7 +169,7 @@ for (const username of ["hr", "admin"]) test(`UC02/03/04/05/06/13/20 ${username}
   await page.goto("/finance");
   await pickEmployee(page, key);
   await page.getByRole("button", { name: "โหลดข้อมูลการเงิน", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "เงินทดรองจ่าย", level: 2, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "เบิกเงินล่วงหน้า", level: 2, exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "บัญชีหนี้", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "เงินกู้", exact: true })).toHaveCount(0);
   await page.goto("/audit");

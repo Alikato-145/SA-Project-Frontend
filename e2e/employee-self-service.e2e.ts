@@ -94,11 +94,11 @@ test("EMPLOYEE submits own leave and eligible advance, reloads and sees HR decis
     expect(leaveHistory.at(-1)).toMatchObject({ action: "approved", remark: "Approved employee-created request" });
     await employee.screenshot({ path: `${process.env.E2E_EVIDENCE_DIR ?? "/private/tmp"}/employee-same-leave-approved.png`, fullPage: true });
     await employee.goto("/finance");
-    const advanceForm = employee.locator("form").filter({ has: employee.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true }) });
+    const advanceForm = employee.locator("form").filter({ has: employee.getByRole("button", { name: "ส่งคำขอเบิกเงินล่วงหน้า", exact: true }) });
     await advanceForm.getByLabel("จำนวนเงิน", { exact: true }).fill("100.01");
-    await advanceForm.getByLabel("เหตุผลที่ขอเงินทดรองจ่าย", { exact: true }).fill(`Household expenses ${key}`);
+    await advanceForm.getByLabel("เหตุผลที่ขอเบิกเงินล่วงหน้า", { exact: true }).fill(`Household expenses ${key}`);
     const submittedAdvance = employee.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/advance-requests" && r.request().method() === "POST");
-    await advanceForm.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true }).click();
+    await advanceForm.getByRole("button", { name: "ส่งคำขอเบิกเงินล่วงหน้า", exact: true }).click();
     const advanceResponse = await submittedAdvance;
     if (day < 20) {
       expect(advanceResponse.status()).toBe(422);

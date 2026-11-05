@@ -11,11 +11,11 @@ test("finance retains advances without debt and loan management", async ({ page 
   await page.getByRole("button", { name: "เข้าสู่พื้นที่ทำงาน", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/);
   await page.goto("/finance");
-  await expect(page.getByRole("heading", { name: "เงินทดรองจ่าย", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "เบิกเงินล่วงหน้า", exact: true })).toBeVisible();
   const loaded = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/advance-requests");
   await page.getByRole("button", { name: "โหลดข้อมูลการเงิน", exact: true }).click();
   expect((await loaded).ok()).toBe(true);
-  await expect(page.getByRole("button", { name: "ส่งคำขอเงินทดรองจ่าย", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ส่งคำขอเบิกเงินล่วงหน้า", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "คำขอเงินกู้", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "เงินกู้", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "บัญชีหนี้", exact: true })).toHaveCount(0);
