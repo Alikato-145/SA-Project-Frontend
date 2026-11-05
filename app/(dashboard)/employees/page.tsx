@@ -49,13 +49,17 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [canManage, setCanManage] = useState(false);
+  const [canManageAll, setCanManageAll] = useState(false);
+  const [managerBranches, setManagerBranches] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
     authApi
       .current()
       .then(async (actor) => {
-        if (active)
+        if (active) {
+          setCanManageAll(actor.grants.some(grant => grant.scope === "all" && (grant.role_code === "HR" || grant.role_code === "OWNER")));
+          setManagerBranches(actor.grants.filter(grant => grant.scope === "branch" && grant.role_code === "BRANCH_MANAGER" && grant.branch_id !== null).map(grant => grant.branch_id!));
           setCanManage(
             actor.grants.some(
               (grant) =>
@@ -63,6 +67,7 @@ export default function EmployeesPage() {
                 (grant.scope === "branch" && grant.role_code === "BRANCH_MANAGER" && grant.branch_id !== null),
             ),
           );
+        }
         if (actor.grants.some(grant => grant.scope === "all" || grant.scope === "branch" || grant.scope === "department")) {
           try {
             const shops = await organizationApi.listShops();
@@ -237,11 +242,18 @@ export default function EmployeesPage() {
                             {employee.employee_code}
                           </p>
                         </div>
-                        <StatusBadge
-                          tone={employee.status === "active" ? "ok" : "warn"}
-                        >
-                          {statuses[employee.status]}
-                        </StatusBadge>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <StatusBadge
+                            tone={employee.status === "active" ? "ok" : "warn"}
+                          >
+                            {statuses[employee.status]}
+                          </StatusBadge>
+                          {(canManageAll || (employee.branch_id !== null && managerBranches.includes(employee.branch_id))) && (
+                            <Link className={`${styles.button} ${styles.buttonSecondary}`} href={`/employees/${employee.id}#edit-profile`} aria-label={`แก้ไขข้อมูล ${employee.first_name} ${employee.last_name}`}>
+                              แก้ไข
+                            </Link>
+                          )}
+                        </div>
                       </div>
                       <p className={styles.muted}>
                         สาขา {employee.branch_name ?? "ไม่ระบุ"} · แผนก {employee.department_name ?? "ไม่ระบุ"}

@@ -156,3 +156,8 @@ test("leave quota errors explain unavailable entitlement and frozen years", asyn
     expect(localizeApiError(code, "Leave quota unavailable.")).toBe(expected);
   }
 });
+
+test("leave approval explains conflicting attendance", async () => {
+  const { localizeApiError } = await import("./client");
+  expect(localizeApiError("ATTENDANCE_LEAVE_CONFLICT", "Attendance leave conflict.")).toContain("มีบันทึกลงเวลาที่ขัดกับคำขอ");
+});

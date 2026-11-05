@@ -84,7 +84,7 @@ export default function FinancePage() {
       <p className="mt-1 text-sm leading-6 text-[var(--muted)]">การอนุมัติตรวจสอบวันที่ขอ จำนวนวันทำงาน เพดานเงินเดือน และเงินสุทธิที่คาดการณ์</p>
       <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_2fr]">
         <form onSubmit={(event) => submit(event, "/advance-requests", (form) => ({ employee_id: employeeId, amount: String(form.get("amount")), reason: String(form.get("reason")) }), "ส่งคำขอเบิกเงินล่วงหน้าแล้ว")} className="space-y-4">
-          <label className="block text-sm">จำนวนเงิน<input className={field} name="amount" type="number" min="0.01" step="0.01" required /></label>
+          <label className="block text-sm">จำนวนเงิน<input className={field} name="amount" type="number" inputMode="decimal" min="0.01" max="9999999999.99" step="0.01" required /></label>
           <label className="block text-sm">เหตุผลที่ขอเบิกเงินล่วงหน้า<textarea className={field} name="reason" maxLength={1000} required /></label>
           <button className={primary} disabled={busy}>ส่งคำขอเบิกเงินล่วงหน้า</button>
         </form>

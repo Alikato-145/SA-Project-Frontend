@@ -58,7 +58,9 @@ test("HR and OWNER prepare exclusive branch groups; actual displayed QR retains 
   await expect(section.locator("[data-payment-record]")).toHaveCount(4);
   await section.getByRole("button", { name: "เตรียมจ่ายสาขาที่เลือก", exact: true }).click();
   await expect(section.getByText("เตรียมจ่ายแล้ว เก็บปลายทางและยอดเงินตามข้อมูลขณะเตรียม ยังไม่ถือว่าจ่ายเงินแล้ว", { exact: true })).toBeVisible();
-  await section.getByRole("button", { name: `แสดง QR ${transfers[0]!.code}`, exact: true }).click();
+  const transferRow = section.locator(`[data-payment-record="${transfers[0]!.recordId}"]`);
+  await transferRow.getByRole("button", { name: `แสดง QR ${transfers[0]!.code}`, exact: true }).click();
+  await expect(transferRow.getByRole("region", { name: "QR รับเงินเดือน", exact: true })).toBeVisible();
   const first = await decode(page);
   const rows = (await (await page.request.get(`/api/v1/payroll/periods/${f.periodId}/payments`)).json()).data;
   expect(rows.filter((r: {

@@ -8,12 +8,14 @@ import { payrollApi, type PayrollConfiguration } from "@/lib/payroll/payroll-api
 export function PayrollConfigurationSuccessor({ configuration, onSaved }: { configuration: PayrollConfiguration; onSaved: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const option = configurationOptions[configuration.config_key as ConfigurationKey];
   return <details className="mt-2"><summary className="cursor-pointer underline">เปลี่ยนค่าตั้งแต่วันที่</summary>
     <form className="mt-2 space-y-2" onSubmit={async event => {
-      event.preventDefault(); const data = new FormData(event.currentTarget); setBusy(true); setError("");
+      event.preventDefault(); const data = new FormData(event.currentTarget); setBusy(true); setError(""); setNotice("");
       try {
         await payrollApi.supersedeConfiguration(configuration.id, { numeric_value: fromConfigurationInput(configuration.config_key, String(data.get("numeric_value"))), effective_from: String(data.get("effective_from")), effective_to: configuration.effective_to });
+        setNotice("บันทึกช่วงใหม่แล้ว");
         onSaved();
       } catch (cause) { setError(cause instanceof Error ? cause.message : "บันทึกไม่สำเร็จ"); }
       finally { setBusy(false); }
@@ -23,6 +25,7 @@ export function PayrollConfigurationSuccessor({ configuration, onSaved }: { conf
       <label className="block">วันที่เริ่มใช้ค่าใหม่<input name="effective_from" className="workspace-control" type="date" min={configuration.effective_from} max={configuration.effective_to ?? undefined} required /></label>
       <button className="workspace-secondary" disabled={busy}>{busy ? "กำลังบันทึก…" : "บันทึกช่วงใหม่"}</button>
       {error && <p role="alert" className="text-red-800">{error}</p>}
+      {notice && <p role="status" className="text-emerald-900">{notice}</p>}
     </form>
   </details>;
 }

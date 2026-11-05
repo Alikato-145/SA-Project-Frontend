@@ -71,6 +71,7 @@ const thaiErrorMessageByCode: Record<string, string> = {
   LOAN_REQUEST_NOT_FOUND: "ไม่พบคำขอเงินกู้",
   LEAVE_QUOTA_EXCEEDED: "สิทธิ์วันลาไม่เพียงพอหรือยังไม่ได้กำหนดสิทธิ์สำหรับปีที่ขอ",
   LEAVE_QUOTA_FROZEN: "สิทธิ์วันลาสำหรับปีที่ขอถูกระงับ กรุณาติดต่อฝ่ายบุคคล",
+  ATTENDANCE_LEAVE_CONFLICT: "วันลาที่เลือกมีบันทึกลงเวลาที่ขัดกับคำขอ กรุณาตรวจสถานะของวันนั้นในหน้าลงเวลาก่อนอนุมัติ",
   PAYROLL_PERIOD_LOCKED: "รอบเงินเดือนถูกล็อกแล้ว จึงแก้ไขไม่ได้",
   PAYROLL_PERIOD_NOT_FOUND: "ไม่พบรอบเงินเดือน",
   PAYROLL_ATTENDANCE_INCOMPLETE: "ข้อมูลการลงเวลาของรอบเงินเดือนยังไม่ครบ",

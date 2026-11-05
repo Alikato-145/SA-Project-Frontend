@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { bankAccountNumber, nationalId, passportId, personName, usernameFormat } from "@/components/form-validation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { authApi, type AuthenticatedActor } from "@/lib/auth/auth-api";
 import { ApiClientError } from "@/lib/api/client";
@@ -72,7 +73,7 @@ const days = [
   "ศุกร์",
   "เสาร์",
 ];
-const moneyPattern = /^\d+\.\d{2}$/;
+const moneyPattern = /^(0|[1-9]\d{0,9})(?:\.\d{2})?$/;
 const usernamePattern = /^[A-Za-z0-9._-]{3,100}$/;
 
 function messageFor(cause: unknown): string {
@@ -190,7 +191,7 @@ export function OnboardingForm() {
       !moneyPattern.test(draft.base_salary) ||
       !moneyPattern.test(draft.welfare_amount)
     ) {
-      setError("เงินเดือนฐานและสวัสดิการต้องเป็นเลขทศนิยม 2 ตำแหน่ง");
+      setError("กรอกเงินเดือนฐานและสวัสดิการเป็นจำนวนเต็มหรือทศนิยม 2 ตำแหน่ง");
       return;
     }
     if (draft.account && !usernamePattern.test(draft.username)) {
@@ -339,6 +340,7 @@ export function OnboardingForm() {
             ชื่อ
             <input
               className={styles.input}
+              {...personName}
               value={draft.first_name}
               onChange={(e) => set("first_name", e.target.value)}
               required
@@ -349,6 +351,7 @@ export function OnboardingForm() {
             นามสกุล
             <input
               className={styles.input}
+              {...personName}
               value={draft.last_name}
               onChange={(e) => set("last_name", e.target.value)}
               required
@@ -359,9 +362,10 @@ export function OnboardingForm() {
             เลขบัตรประชาชน
             <input
               className={styles.input}
+              {...nationalId}
               value={draft.national_id}
               onChange={(e) => set("national_id", e.target.value)}
-              maxLength={20}
+              maxLength={13}
               autoComplete="off"
             />
           </label>
@@ -369,6 +373,7 @@ export function OnboardingForm() {
             เลขหนังสือเดินทาง
             <input
               className={styles.input}
+              {...passportId}
               value={draft.passport_id}
               onChange={(e) => set("passport_id", e.target.value)}
               maxLength={30}
@@ -495,7 +500,8 @@ export function OnboardingForm() {
                 onChange={(e) => set("base_salary", e.target.value)}
                 inputMode="decimal"
                 placeholder="18000.00"
-                pattern="[0-9]+[.][0-9]{2}"
+                pattern="(0|[1-9][0-9]{0,9})([.][0-9]{2})?"
+                title="กรอกจำนวนเงินเป็นตัวเลข เช่น 18000 หรือ 18000.50"
                 required
               />
             </label>
@@ -506,7 +512,8 @@ export function OnboardingForm() {
                 value={draft.welfare_amount}
                 onChange={(e) => set("welfare_amount", e.target.value)}
                 inputMode="decimal"
-                pattern="[0-9]+[.][0-9]{2}"
+                pattern="(0|[1-9][0-9]{0,9})([.][0-9]{2})?"
+                title="กรอกจำนวนเงินเป็นตัวเลข เช่น 18000 หรือ 18000.50"
                 required
               />
             </label>
@@ -588,6 +595,7 @@ export function OnboardingForm() {
                   ชื่อเจ้าของบัญชี
                   <input
                     className={styles.input}
+                    {...personName}
                     value={draft.account_holder_name}
                     onChange={(e) => set("account_holder_name", e.target.value)}
                     required
@@ -600,11 +608,9 @@ export function OnboardingForm() {
                     className={styles.input}
                     value={draft.account_number}
                     onChange={(e) => set("account_number", e.target.value)}
-                    inputMode="numeric"
+                    {...bankAccountNumber}
                     autoComplete="off"
                     required
-                    minLength={6}
-                    maxLength={34}
                   />
                 </label>
               </div>
@@ -629,6 +635,7 @@ export function OnboardingForm() {
                 ชื่อผู้ใช้
                 <input
                   className={styles.input}
+                  {...usernameFormat}
                   value={draft.username}
                   onChange={(e) => set("username", e.target.value)}
                   required

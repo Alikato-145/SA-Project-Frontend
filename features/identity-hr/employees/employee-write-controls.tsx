@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useState } from "react";
+import { bankAccountNumber, personName } from "@/components/form-validation";
 import { ApiClientError } from "@/lib/api/client";
 import type { BankAccountSummary, WeeklyHolidayItem } from "../contracts/types";
 import { Field, styles } from "../ui/primitives";
@@ -440,6 +441,7 @@ export function EmployeeWriteControls({
                 name="base_salary"
                 inputMode="decimal"
                 pattern="(0|[1-9][0-9]{0,9})([.][0-9]{2})?"
+                title="กรอกจำนวนเงินเป็นตัวเลข เช่น 18000 หรือ 18000.50"
                 defaultValue={latestAssignment?.base_salary}
                 required
               />
@@ -451,6 +453,7 @@ export function EmployeeWriteControls({
                 name="welfare_amount"
                 inputMode="decimal"
                 pattern="(0|[1-9][0-9]{0,9})([.][0-9]{2})?"
+                title="กรอกจำนวนเงินเป็นตัวเลข เช่น 18000 หรือ 18000.50"
                 defaultValue={latestAssignment?.welfare_amount}
                 required
               />
@@ -469,6 +472,7 @@ export function EmployeeWriteControls({
                 aria-label="สิ้นสุดช่วงการจ้าง"
                 className={styles.input}
                 name="effective_to"
+                data-not-before="effective_from"
                 type="date"
               />
             </Field>
@@ -508,6 +512,7 @@ export function EmployeeWriteControls({
                   aria-label="ชื่อบัญชี"
                   className={styles.input}
                   name="account_holder_name"
+                  {...personName}
                   maxLength={200}
                   required
                 />
@@ -517,7 +522,7 @@ export function EmployeeWriteControls({
                   aria-label="เลขบัญชีเต็ม"
                   className={styles.input}
                   name="account_number"
-                  inputMode="numeric"
+                  {...bankAccountNumber}
                   autoComplete="off"
                   required
                 />
@@ -597,6 +602,7 @@ export function EmployeeWriteControls({
                     aria-label="ชื่อบัญชีใหม่"
                     className={styles.input}
                     name="account_holder_name"
+                  {...personName}
                     maxLength={200}
                     defaultValue={
                       activeBanks.find((item) => item.id === selectedBankId)
@@ -611,7 +617,7 @@ export function EmployeeWriteControls({
                     aria-label="เลขบัญชีใหม่ ถ้าเปลี่ยน"
                     className={styles.input}
                     name="account_number"
-                    inputMode="numeric"
+                    {...bankAccountNumber}
                     autoComplete="off"
                   />
                 </Field>
@@ -744,6 +750,7 @@ export function EmployeeWriteControls({
                   aria-label="วันสิ้นสุดวันหยุด"
                   className={styles.input}
                   name="effective_to"
+                  data-not-before="effective_from"
                   type="date"
                 />
               </Field>

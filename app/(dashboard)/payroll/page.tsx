@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PayrollConfigurationSuccessor } from "@/components/payroll-configuration-successor";
 import { PayrollPayments } from "@/components/payroll-payments";
 import { PayrollAdjustments } from "@/components/payroll-adjustments";
-import { PageHeader } from "@/components/workspace-ui";
+import { Feedback, PageHeader } from "@/components/workspace-ui";
 import { missingConfigurationCoverage } from "@/lib/payroll/configuration-coverage";
 import { payrollMonth } from "@/lib/payroll/payroll-month";
 import { calculationCategory, calculationDetail, groupPayrollMoney } from "@/lib/payroll/calculation-details";
@@ -18,6 +18,8 @@ import { payrollApi, type PayrollConfiguration, type PayrollPeriod, type Payroll
 import { authApi } from "../../../lib/auth/auth-api";
 import { canAccessDashboardPath } from "@/lib/auth/route-access";
 import { organizationApi, type Branch, type Shop } from "../../../lib/organization/organization-api";
+
+type FeedbackLocation = "workspace" | "configuration" | "period" | "calculation" | "record";
 
 const field = "workspace-control";
 const button = "workspace-primary";
@@ -61,10 +63,12 @@ export default function PayrollPage() {
   const [readiness, setReadiness] = useState<PayrollReadiness | null>(null);
   const [roster, setRoster] = useState<PayrollRosterEntry[]>([]);
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  const [openEmployeeId, setOpenEmployeeId] = useState<string | null>(null);
   const [record, setRecord] = useState<PayrollRecord | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [feedbackLocation, setFeedbackLocation] = useState<FeedbackLocation>("workspace");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -116,8 +120,8 @@ export default function PayrollPage() {
     return () => controller.abort();
   }, [selectedId, workspaceVersion]);
 
-  const run = async <T,>(work: () => Promise<{ data: T; requestId: string | null }>, onDone: (data: T) => void, noticeText?: string) => {
-    setBusy(true); setError(""); setNotice("");
+  const run = async <T,>(location: FeedbackLocation, work: () => Promise<{ data: T; requestId: string | null }>, onDone: (data: T) => void, noticeText?: string) => {
+    setFeedbackLocation(location); setBusy(true); setError(""); setNotice(""); setRequestId(null);
     try {
       const result = await work(); onDone(result.data); setRequestId(result.requestId);
       if (noticeText) setNotice(noticeText);
@@ -126,8 +130,9 @@ export default function PayrollPage() {
   };
 
   const loadWorkspace = async () => {
+    setFeedbackLocation("workspace");
     if (!shopId) { setError("เลือกร้านก่อนเปิดสมุดงาน"); return; }
-    setLoading(true); setError(""); setNotice(""); setPreview(null); setRecord(null);
+    setLoading(true); setError(""); setNotice(""); setPreview(null); setRecord(null); setOpenEmployeeId(null);
     const [accessResult, configResult, periodResult] = await Promise.allSettled([
       payrollApi.getAccess(), payrollApi.listConfigurations(shopId), payrollApi.listPeriods(shopId),
     ]);
@@ -140,10 +145,10 @@ export default function PayrollPage() {
   };
 
   const submitConfiguration = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); const form = new FormData(event.currentTarget);
+    event.preventDefault(); setFeedbackLocation("configuration"); setNotice(""); setRequestId(null); const form = new FormData(event.currentTarget);
     let value: string;
     try { value = fromConfigurationInput(configurationKey, String(form.get("numeric_value"))); } catch (cause) { setError(messageFor(cause)); return; }
-    void run(() => payrollApi.createConfiguration({
+    void run("configuration", () => payrollApi.createConfiguration({
       shop_id: shopId, branch_id: String(form.get("branch_id") ?? "") || null,
       config_key: configurationKey, numeric_value: value,
       unit: configurationOptions[configurationKey].unit, effective_from: String(form.get("effective_from")), effective_to: String(form.get("effective_to") ?? "") || null,
@@ -151,11 +156,11 @@ export default function PayrollPage() {
   };
 
   const submitPeriod = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); const form = new FormData(event.currentTarget); const month = String(form.get("month"));
+    event.preventDefault(); setFeedbackLocation("period"); setNotice(""); setRequestId(null); const form = new FormData(event.currentTarget); const month = String(form.get("month"));
     let dates;
     try { dates = payrollMonth(month); } catch (cause) { setError(messageFor(cause)); return; }
     const { year, month: monthNumber, start, end } = dates;
-    void run(() => payrollApi.createPeriod({ shop_id: shopId, period_year: year, period_month: monthNumber,
+    void run("period", () => payrollApi.createPeriod({ shop_id: shopId, period_year: year, period_month: monthNumber,
       start_date: start, end_date: end }),
     (created) => { setPeriods((rows) => [created, ...rows]); setSelected(created); }, "เปิดรอบเงินเดือนแล้ว");
   };
@@ -163,18 +168,36 @@ export default function PayrollPage() {
   const calculate = (mode: "preview" | "lock") => {
     if (!selected) return;
     if (mode === "lock" && !window.confirm("ล็อกรอบนี้หรือไม่? ผลคำนวณและรายการหักจะถูกตรึงเป็นประวัติ")) return;
-    void run(() => mode === "preview" ? payrollApi.previewPeriod(selected.id) : payrollApi.lockPeriod(selected.id),
+    setOpenEmployeeId(null); setRecord(null);
+    void run("calculation", () => mode === "preview" ? payrollApi.previewPeriod(selected.id) : payrollApi.lockPeriod(selected.id),
       (result) => { setWorkspaceVersion((version) => version + 1); setPreview(result); setSelected(result.period); setPeriods((rows) => rows.map((row) => row.id === result.period.id ? result.period : row)); },
       mode === "preview" ? "คำนวณตัวอย่างล่าสุดแล้ว" : "ล็อกรอบเงินเดือนแล้ว");
   };
 
   const showRecord = (row: PayrollRecord) => {
-    if (!selected || !row.id) { setRecord(row); return; }
-    void run(() => payrollApi.getRecord(selected.id, row.id!), setRecord);
+    setRecord(null);
+    if (openEmployeeId === row.employee_id) { setOpenEmployeeId(null); return; }
+    setOpenEmployeeId(row.employee_id);
+    if (!selected || !row.id) { setFeedbackLocation("record"); setError(""); setNotice(""); setRequestId(null); setRecord(row); return; }
+    void run("record", () => payrollApi.getRecord(selected.id, row.id!), setRecord);
   };
 
   if (!accessChecked) return <div className="h-32 animate-pulse rounded-lg bg-[var(--line)]" />;
   if (unavailableRole) return <section className="workspace-section max-w-xl"><h1 className="text-2xl font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</h1><p className="mt-3 leading-7 text-[var(--muted)]">{roleCodes.includes("SUPERVISOR") ? "Supervisor ใช้งาน Attendance และ Leave approval ตามแผนกเมื่อ workflow นั้นเชื่อมเสร็จ" : "Employee ใช้งาน self-service และ payslip เมื่อ feature นั้นพร้อม"}</p></section>;
+
+  const feedbackAt = (location: FeedbackLocation) => feedbackLocation === location && (error || notice || requestId) && (
+    <div className="mt-3 space-y-2">
+      {error && <Feedback kind="error" detail={error} />}
+      {notice && <Feedback kind="success" detail={notice} />}
+      {requestId && <p className="text-xs text-[var(--muted)]">Request ID: {requestId}</p>}
+    </div>
+  );
+  const recordDetails = record && <section aria-labelledby="record-evidence" className="bg-[var(--ink)] p-5 text-white"><div className="flex items-center justify-between gap-4"><h3 id="record-evidence" className="font-semibold">รายละเอียดเงินเดือน {employeeLabel(record.employee_id)}</h3><button className="text-sm underline" onClick={() => { setRecord(null); setOpenEmployeeId(null); }}>ปิด</button></div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5"><div><dt className="text-white/60">ฐานเงินเดือน</dt><dd>{formatMoney(record.base_salary_snapshot)}</dd></div><div><dt className="text-white/60">สวัสดิการ</dt><dd>{formatMoney(record.welfare_snapshot)}</dd></div><div><dt className="text-white/60">รายได้</dt><dd>{formatMoney(record.total_earnings)}</dd></div><div><dt className="text-white/60">รายการหัก</dt><dd>{formatMoney(record.total_deductions)}</dd></div><div><dt className="text-white/60">สุทธิ</dt><dd>{formatMoney(record.net_pay)}</dd></div></dl><h4 className="mt-5 font-semibold">สรุปรายได้และรายการหัก</h4>
+            <div aria-label="กลุ่มรายได้และรายการหัก" className="mt-2 divide-y divide-white/15 border-y border-white/15">{groupPayrollMoney(record.items).map((group) => <details key={`${group.itemType}-${group.direction}`} className="py-3 text-sm"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-1"><span className="font-medium">{group.itemType === "other" ? "รายการอื่น ๆ" : itemLabels[group.itemType] ?? group.items[0]?.description} <span className="font-normal text-white/70">({group.items.length} รายการ · กดดูรายละเอียด)</span></span><strong className="tabular-nums">{group.direction === "deduction" ? "−" : "+"}{formatMoney(group.total)} บาท</strong></summary><ul className="mt-2 divide-y divide-white/10 pl-3">{group.items.map((item, index) => <li key={`${item.source_id ?? "item"}-${index}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><span>{item.occurred_on ? `วันที่ ${item.occurred_on}` : item.description}{item.item_type === "adjustment" && item.occurred_on ? ` · ${item.description}` : ""}</span><span className="tabular-nums">{group.direction === "deduction" ? "−" : "+"}{formatMoney(item.amount)} บาท</span></li>)}</ul></details>)}</div>
+            <details className="mt-5 border-t border-white/20 pt-4"><summary className="cursor-pointer font-semibold">ข้อมูลที่ใช้คำนวณ ({record.items.filter((item) => item.item_type === "other" && Number(item.amount) === 0).length} รายการ)</summary><p className="mt-2 text-sm text-white/70">เลือกหมวดเพื่อดูข้อมูลประกอบ รายการเหล่านี้ไม่มีผลเพิ่มหรือลดยอดเงิน</p>{["ค่าที่ใช้คำนวณ", "วันทำงานและวันหยุดตามตาราง", "ข้อมูลการลงเวลา", "การลาที่อนุมัติแล้ว", "ข้อมูลประกอบอื่น ๆ"].map((category) => {
+              const items = record.items.filter((item) => item.item_type === "other" && Number(item.amount) === 0 && calculationCategory(item) === category);
+              return items.length ? <details key={category} className="mt-2 border-t border-white/15 pt-2 text-sm"><summary className="cursor-pointer font-medium">{category} ({items.length} รายการ)</summary><ul className="mt-2 divide-y divide-white/10 pl-3">{items.map((item, index) => <li key={`${item.source_id ?? "detail"}-${index}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><span>{calculationDetail(item, Object.fromEntries(branches.map(branch => [branch.id, branch.name])))}</span>{item.occurred_on && <span className="text-white/70">{item.occurred_on}</span>}</li>)}</ul></details> : null;
+            })}</details></section>;
 
   return <div className="space-y-7">
     <div>
@@ -183,11 +206,8 @@ export default function PayrollPage() {
           <label className="min-w-0 flex-1 text-sm sm:w-60">ร้าน<select className={field} value={shopId} onChange={(event) => setShopId(event.target.value)} required><option value="">เลือกร้าน</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.code} · {shop.name}{shop.is_active ? "" : " · ปิดใช้งาน"}</option>)}</select></label>
           <button className={button} disabled={busy || loading || !shopId}>{loading ? "กำลังโหลด…" : "เปิดสมุดงาน"}</button>
       </form>
-      {requestId && <p className="mt-3 text-xs text-[var(--muted)]">Request ID: {requestId}</p>}
+      {feedbackAt("workspace")}
     </div>
-
-    {notice && <p role="status" className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
-    {error && <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{error}</p>}
     {canMutate === false && <p className="border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--ink)]">โหมดอ่านอย่างเดียว: Branch Manager ดูข้อมูลตามสาขาที่ได้รับสิทธิ์ แต่สร้าง คำนวณ หรือล็อกรอบไม่ได้</p>}
 
     {canMutate === true && <section className="grid gap-px overflow-hidden border border-[var(--line)] bg-[var(--line)] lg:grid-cols-2">
@@ -202,10 +222,12 @@ export default function PayrollPage() {
           <label className="text-sm">สิ้นสุด <span className="text-[var(--muted)]">(เว้นว่าง = ไม่กำหนด)</span><input className={field} name="effective_to" type="date" value={configurationTo} min={configurationFrom || undefined} onChange={(event) => setConfigurationTo(event.target.value)} /></label>
           <label className="text-sm sm:col-span-2">สาขา <span className="text-[var(--muted)]">(เว้นว่าง = ทั้งร้าน)</span><select className={field} name="branch_id" value={configurationBranch} onChange={(event) => setConfigurationBranch(event.target.value)}><option value="">ทั้งร้าน</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label>
           <button className={`${button} sm:col-span-2 sm:justify-self-start`} disabled={busy || archivedShop}>บันทึกค่าคำนวณ</button>
+          <div className="empty:hidden sm:col-span-2">{feedbackAt("configuration")}</div>
         </form>
       </details>
       <details className="bg-[var(--surface)] p-5" open><summary className="cursor-pointer font-semibold">เปิดรอบเงินเดือน</summary>
         <form onSubmit={submitPeriod} className="mt-5 flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-sm">เดือน<input className={field} name="month" type="month" placeholder="2026-10" pattern="[0-9]{4}-(0[1-9]|1[0-2])" aria-describedby="payroll-month-help" required /></label><button className={button} disabled={busy || archivedShop}>เปิดรอบ</button></form>
+        {feedbackAt("period")}
         <p id="payroll-month-help" className="mt-4 text-sm leading-6 text-[var(--muted)]">ใช้ปี ค.ศ. และเดือน เช่น 2026-10 หมายถึงตุลาคม 2026 หนึ่งร้านเปิดได้หนึ่งรอบต่อเดือน</p>
       </details>
     </section>}
@@ -213,12 +235,13 @@ export default function PayrollPage() {
     <section className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside><h2 className="font-semibold">รอบเงินเดือน</h2><div className="mt-3 border-y border-[var(--line)]">
         {periods.length === 0 && <p className="py-5 text-sm text-[var(--muted)]">ยังไม่มีรอบ กด “เปิดสมุดงาน” หรือสร้างรอบใหม่</p>}
-        {periods.map((period) => <button key={period.id} disabled={busy || loading} onClick={() => { setSelected(period); setPreview(null); setRecord(null); }} className={`flex w-full items-center justify-between border-b border-[var(--line)] px-2 py-4 text-left text-sm last:border-0 ${selected?.id === period.id ? "bg-[var(--accent-soft)]" : "bg-transparent"}`}><span><strong className="block">{period.period_month.toString().padStart(2, "0")}/{period.period_year}</strong><span className="text-[var(--muted)]">{period.start_date} ถึง {period.end_date}</span></span><span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs">{periodStatusLabels[period.status] ?? period.status}</span></button>)}
+        {periods.map((period) => <button key={period.id} disabled={busy || loading} onClick={() => { setSelected(period); setPreview(null); setRecord(null); setOpenEmployeeId(null); }} className={`flex w-full items-center justify-between border-b border-[var(--line)] px-2 py-4 text-left text-sm last:border-0 ${selected?.id === period.id ? "bg-[var(--accent-soft)]" : "bg-transparent"}`}><span><strong className="block">{period.period_month.toString().padStart(2, "0")}/{period.period_year}</strong><span className="text-[var(--muted)]">{period.start_date} ถึง {period.end_date}</span></span><span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs">{periodStatusLabels[period.status] ?? period.status}</span></button>)}
       </div></aside>
 
       <div className="min-w-0 space-y-6">
         {!selected ? <div className="border border-dashed border-[var(--line)] p-8 text-center text-[var(--muted)]">เลือกรอบเพื่อเริ่มตรวจเงินเดือน</div> : <>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] pb-5"><div><h2 className="text-xl font-semibold">งวด {selected.period_month.toString().padStart(2, "0")}/{selected.period_year}</h2><p className="mt-1 text-sm text-[var(--muted)]">สถานะ {periodStatusLabels[selected.status] ?? selected.status}</p></div>{canMutate === true && <div className="flex gap-2"><button className={quietButton} onClick={() => calculate("preview")} disabled={busy || detailLoading || selected.status === "locked"}>คำนวณตัวอย่าง</button><button className={button} onClick={() => calculate("lock")} disabled={busy || detailLoading || selected.status === "locked"}>ล็อกรอบ</button></div>}</div>
+          {feedbackAt("calculation")}
           <section className="workspace-section" aria-label="ความพร้อมของงวด">
             <h3 className="text-lg font-semibold">ตรวจข้อมูลก่อนปิดรอบเงินเดือน</h3>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">ตรวจรายการที่ต้องแก้ให้ครบ แล้วคำนวณตัวอย่างเพื่อตรวจยอดก่อนล็อกรอบ</p>
@@ -278,16 +301,17 @@ export default function PayrollPage() {
             {!detailLoading && preview && groupPayrollByBranch(preview.records).map((group) => <section key={group.branchId} className="mt-5" aria-label={`สาขา ${branches.find((branch) => branch.id === group.branchId)?.name ?? group.branchId}`}>
               <h4 className="border-b border-[var(--line)] bg-[var(--accent-soft)] px-3 py-2 font-semibold">{branches.find((branch) => branch.id === group.branchId)?.name ?? `สาขา ${group.branchId}`} <span className="text-sm font-normal">({group.records.length} คน)</span></h4>
               <div className="overflow-x-auto"><table className="w-full min-w-[680px] border-collapse text-sm"><thead><tr className="text-left text-[var(--muted)]"><th className="py-3 pr-4">พนักงาน</th><th className="py-3 pr-4 text-right">รายได้</th><th className="py-3 pr-4 text-right">รายการหัก</th><th className="py-3 pr-4 text-right">สุทธิ</th><th className="py-3 text-right">รายละเอียด</th></tr></thead><tbody>
-                {group.records.map((row) => <tr key={row.employee_id} className="border-t border-[var(--line)]"><td className="py-4 pr-4 font-semibold">{employeeLabel(row.employee_id)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_earnings)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_deductions)}</td><td className="py-4 pr-4 text-right font-semibold tabular-nums">{formatMoney(row.net_pay)}</td><td className="py-4 text-right"><button className={quietButton} onClick={() => showRecord(row)}>ดู {groupPayrollMoney(row.items).length} รายการ</button></td></tr>)}
+                {group.records.map((row) => <Fragment key={row.employee_id}><tr className="border-t border-[var(--line)]"><td className="py-4 pr-4 font-semibold">{employeeLabel(row.employee_id)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_earnings)}</td><td className="py-4 pr-4 text-right tabular-nums">{formatMoney(row.total_deductions)}</td><td className="py-4 pr-4 text-right font-semibold tabular-nums">{formatMoney(row.net_pay)}</td><td className="py-4 text-right"><button className={quietButton} disabled={busy} aria-expanded={openEmployeeId === row.employee_id} onClick={() => showRecord(row)}>ดู {groupPayrollMoney(row.items).length} รายการ</button></td></tr>
+                {openEmployeeId === row.employee_id && <tr><td colSpan={5} className="pb-4">
+                  {busy && !record && <p role="status" className="p-3 text-sm">กำลังโหลดรายละเอียดเงินเดือน…</p>}
+                  {feedbackAt("record")}
+                  {recordDetails}
+                </td></tr>}
+                </Fragment>)}
               </tbody></table></div>
             </section>)}
           </section>
-          {record && <section aria-labelledby="record-evidence" className="bg-[var(--ink)] p-5 text-white"><div className="flex items-center justify-between gap-4"><h3 id="record-evidence" className="font-semibold">รายละเอียดเงินเดือน {employeeLabel(record.employee_id)}</h3><button className="text-sm underline" onClick={() => setRecord(null)}>ปิด</button></div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5"><div><dt className="text-white/60">ฐานเงินเดือน</dt><dd>{formatMoney(record.base_salary_snapshot)}</dd></div><div><dt className="text-white/60">สวัสดิการ</dt><dd>{formatMoney(record.welfare_snapshot)}</dd></div><div><dt className="text-white/60">รายได้</dt><dd>{formatMoney(record.total_earnings)}</dd></div><div><dt className="text-white/60">รายการหัก</dt><dd>{formatMoney(record.total_deductions)}</dd></div><div><dt className="text-white/60">สุทธิ</dt><dd>{formatMoney(record.net_pay)}</dd></div></dl><h4 className="mt-5 font-semibold">สรุปรายได้และรายการหัก</h4>
-            <div aria-label="กลุ่มรายได้และรายการหัก" className="mt-2 divide-y divide-white/15 border-y border-white/15">{groupPayrollMoney(record.items).map((group) => <details key={`${group.itemType}-${group.direction}`} className="py-3 text-sm"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-1"><span className="font-medium">{group.itemType === "other" ? "รายการอื่น ๆ" : itemLabels[group.itemType] ?? group.items[0]?.description} <span className="font-normal text-white/70">({group.items.length} รายการ · กดดูรายละเอียด)</span></span><strong className="tabular-nums">{group.direction === "deduction" ? "−" : "+"}{formatMoney(group.total)} บาท</strong></summary><ul className="mt-2 divide-y divide-white/10 pl-3">{group.items.map((item, index) => <li key={`${item.source_id ?? "item"}-${index}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><span>{item.occurred_on ? `วันที่ ${item.occurred_on}` : item.description}{item.item_type === "adjustment" && item.occurred_on ? ` · ${item.description}` : ""}</span><span className="tabular-nums">{group.direction === "deduction" ? "−" : "+"}{formatMoney(item.amount)} บาท</span></li>)}</ul></details>)}</div>
-            <details className="mt-5 border-t border-white/20 pt-4"><summary className="cursor-pointer font-semibold">ข้อมูลที่ใช้คำนวณ ({record.items.filter((item) => item.item_type === "other" && Number(item.amount) === 0).length} รายการ)</summary><p className="mt-2 text-sm text-white/70">เลือกหมวดเพื่อดูข้อมูลประกอบ รายการเหล่านี้ไม่มีผลเพิ่มหรือลดยอดเงิน</p>{["ค่าที่ใช้คำนวณ", "วันทำงานและวันหยุดตามตาราง", "ข้อมูลการลงเวลา", "การลาที่อนุมัติแล้ว", "ข้อมูลประกอบอื่น ๆ"].map((category) => {
-              const items = record.items.filter((item) => item.item_type === "other" && Number(item.amount) === 0 && calculationCategory(item) === category);
-              return items.length ? <details key={category} className="mt-2 border-t border-white/15 pt-2 text-sm"><summary className="cursor-pointer font-medium">{category} ({items.length} รายการ)</summary><ul className="mt-2 divide-y divide-white/10 pl-3">{items.map((item, index) => <li key={`${item.source_id ?? "detail"}-${index}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><span>{calculationDetail(item, Object.fromEntries(branches.map(branch => [branch.id, branch.name])))}</span>{item.occurred_on && <span className="text-white/70">{item.occurred_on}</span>}</li>)}</ul></details> : null;
-            })}</details></section>}
+
         </>}
       </div>
     </section>

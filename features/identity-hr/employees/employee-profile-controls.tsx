@@ -1,5 +1,6 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { personName } from "@/components/form-validation";
 import { apiRequest } from "@/lib/api/client";
 import type { EmployeeSummary, EmployeeStatus } from "../contracts/types";
 import { Field, styles } from "../ui/primitives";
@@ -8,6 +9,13 @@ export function EmployeeProfileControls({ employee, onSaved }: { employee: Emplo
   const [status, setStatus] = useState<EmployeeStatus>(employee.status);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const editRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (window.location.hash === "#edit-profile" && editRef.current) {
+      editRef.current.open = true;
+      editRef.current.scrollIntoView();
+    }
+  }, []);
   const save = async (event: FormEvent<HTMLFormElement>, changeStatus: boolean) => {
     event.preventDefault(); const form = new FormData(event.currentTarget);
     if (changeStatus && status === "terminated" && !window.confirm(`สิ้นสุดการจ้างหลังวันทำงานสุดท้าย ${form.get("terminated_at")} หรือไม่? ประวัติการจ้างจะจบช่วงวันที่โดยเก็บข้อมูลเดิมไว้`)) return;
@@ -22,12 +30,12 @@ export function EmployeeProfileControls({ employee, onSaved }: { employee: Emplo
   };
   return <div className="mt-6 space-y-4">
     {error && <p role="alert" className="text-red-800">{error}</p>}
-    <details className={styles.panel}><summary className="cursor-pointer font-semibold">แก้ข้อมูลติดต่อพนักงาน</summary>
+    <details ref={editRef} id="edit-profile" className={styles.panel}><summary className="cursor-pointer font-semibold">แก้ข้อมูลติดต่อพนักงาน</summary>
       <form onSubmit={event => void save(event, false)} className="mt-4 space-y-3">
-        <Field label="ชื่อ"><input className={styles.input} name="first_name" defaultValue={employee.first_name} required maxLength={100} /></Field>
-        <Field label="นามสกุล"><input className={styles.input} name="last_name" defaultValue={employee.last_name} required maxLength={100} /></Field>
-        <Field label="โทรศัพท์"><input className={styles.input} name="phone" defaultValue={employee.phone ?? ""} maxLength={30} /></Field>
-        <Field label="อีเมลส่วนตัว"><input className={styles.input} name="personal_email" type="email" defaultValue={employee.personal_email ?? ""} maxLength={255} /></Field>
+        <Field label="ชื่อ"><input className={styles.input} name="first_name" {...personName} defaultValue={employee.first_name} required maxLength={100} /></Field>
+        <Field label="นามสกุล"><input className={styles.input} name="last_name" {...personName} defaultValue={employee.last_name} required maxLength={100} /></Field>
+        <Field label="โทรศัพท์"><input className={styles.input} name="phone" type="tel" inputMode="tel" pattern="[+]?[0-9]{8,15}" title="กรอกหมายเลขโทรศัพท์ 8–15 หลัก ขึ้นต้นด้วย + ได้สำหรับเบอร์ต่างประเทศ" defaultValue={employee.phone ?? ""} maxLength={30} /></Field>
+        <Field label="อีเมลส่วนตัว"><input className={styles.input} name="personal_email" type="email" pattern="[^\s@]+@[^\s@]+[.][^\s@]+" title="กรอกอีเมลในรูปแบบ name@example.com" defaultValue={employee.personal_email ?? ""} maxLength={255} /></Field>
         <Field label="ที่อยู่"><textarea className={styles.textarea} name="address" defaultValue={employee.address ?? ""} maxLength={2000} /></Field>
         <button className={styles.button} disabled={busy}>บันทึกข้อมูลพนักงาน</button>
       </form>

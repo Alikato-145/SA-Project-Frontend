@@ -1,5 +1,7 @@
 "use client";
 
+import { usernameFormat } from "@/components/form-validation";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/api/client";
@@ -758,6 +760,7 @@ export function AccountCreateLive({ onCreated }: { onCreated?: () => void } = {}
           <Field label="ชื่อผู้ใช้">
             <input
               className={styles.input}
+              {...usernameFormat}
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               maxLength={100}
